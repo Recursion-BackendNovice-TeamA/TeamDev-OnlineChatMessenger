@@ -1,107 +1,106 @@
-#client
 import socket
-import time
-import random
-import string
 import threading
 
-# randomを使って、クライアントに渡すためのトークンを生成(最大255バイト)
-# このトークンにユーザー名を割り当てる
-# このトークンはクライアントをルームホストとして識別するために使用される
-def generate_token(chars=string.ascii_uppercase + string.digits):
-    return ''.join(random.choice(chars) for _ in range(255))
 
-# チャットルーム作成・参加時にTCP接続するための関数
-# TCP接続を初期化するために、ユーザー名とオペレーションコードをサーバーに送信する
-def tcp_connect(username, operation):
-    # 部屋名を入力させる
-    room_name = input("Enter a room name: ")
+# ChatClientクラスを定義
+class Client:
+    def __init__(self, name):
+        self.name = name
+        self.server_address = ("0.0.0.0", 9002)
+        self.token = ""
+        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    # ヘッダー... 部屋名の長さ(1バイト) + オペレーションコード(1バイト) + 通信状態state(1バイト) + payload(29バイト)（要件）
-    header = bytes(len(room_name), operation, 0) + b'0'*29
-    # ボディ... 部屋名（最大2^8バイト） + payload（最大2^29バイト）(要件)
-    # ペイロードには希望するユーザー名を入れる（要件）
-    body = room_name + username
-    # サーバーにTCP接続
-    # TCPサーバーのポート：9002
-    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_socket.connect(('0.0.0.0', 9002))
-    # ヘッダーとボディをサーバーに送信
-    tcp_socket.sendall(header + body)
+    # クライアントを起動する関数
+    def start(self):
+        # ユーザー入力後にアクションを選ばせる(部屋作成・参加・終了)
+        op = input(
+            "0, Send a message(test)\n1. Create a new room\n2. Join an existing room\n3. Quit\nChoose an option: "
+        )
+        if op == "3":
+            print("Closing connection...")
+            self.udp_socket.close()
+            print("Connection closed.")
+            exit()
 
-    # サーバーからヘッダーとボディを受信
+        self.tcp_connect(int(op))
 
-    # stateを取得
+    def tcp_connect(self, operation):
+        # サーバーにTCP接続
+        # TCPサーバーのポート：9002
+        self.tcp_socket.connect(self.server_address)
 
-    # state = 1 ... 成功
+        # 入室リクエストを送信・レスポンス待機
+        self.tcp_request(operation)
 
-        # トークンを受信(生成)
+    # 部屋入室リクエストの関数（作成・参加共通）
+    def tcp_request(self, operation):
+        # 部屋名を入力させる
+        room_name = input("Enter room name: ")
 
-        # トークンをエンコードしてpayloadとする
+        # ヘッダーを作成(state = 0)
+        header = bytes([len(room_name), operation, 0]) + b"0" * 29
 
-        # ヘッダーのstateを2(リクエスト完了)に更新
+        # ボディを作成
+        body = room_name.encode("utf-8") + self.name.encode("utf-8")
 
-        # ヘッダーとボディとpayloadをサーバーに送信
+        # ヘッダーとボディをサーバーに送信
+        req = header + body
+        self.tcp_socket.sendall(req)
+        print(req)
 
-        # TCP接続を閉じる
+        # サーバーからヘッダーとボディを受信
+        res = self.tcp_socket.recv(4096)
+        print(res)
 
+        # ヘッダーからstateを取得
+        state = res[2]
+        if state == 0:
+            if operation == 1:
+                print("部屋 {} は既に存在します。".format(room_name))
+            else:
+                print("部屋 {} は存在しません。".format(room_name))
+        else:
+            # ヘッダーからトークンを取得
+            self.token = res[32:].decode("utf-8")
+            print("トークン: {}".format(self.token))
 
-        # 部屋名とトークンを返す
- 
+            self.tcp_socket.close()
+            # UDPソケットをバインド
+            self.udp_socket.bind(("", 0))
 
-# メッセージ送信用の関数
-def send_message(client_socket, room_name, token):
-    # # メッセージを入力させる
-    # message = input("Enter your message:")
-    # # ヘッダー... 部屋名の長さ(1バイト) + 取得したトークンの長さ(1バイト)
-    # header = bytes(len(room_name), len(token))
-    # # ヘッダー + 部屋名 + トークン + メッセージをサーバーに送信
-    # full_message = header + room_name.encode('utf-8') + token.encode('utf-8') + message.encode('utf-8')
-    # if(len(full_message) > 255):
-    #     print("Message too long.")
-    
-    # client_socket.sendto(full_message, ('0.0.0.0', 9001))
+        # 他クライアントからのメッセージを別スレッドで受信
+        threading.Thread(target=self.receive_message).start()
 
-    # メッセージ送信テスト用
-    message = input("Enter your message:")
-    full_message = message.encode('utf-8')
-    client_socket.sendto(full_message, ('0.0.0.0', 9001))
+        # メッセージを送信
+        threading.Thread(target=self.send_message).start()
 
-    print('receive_start')
-    while True:
-        recv_message, _ = client_socket.recvfrom(4096)
-        print(recv_message.decode('utf-8'))
+    # メッセージを送信する関数
+    def send_message(self):
+        # メッセージを入力させる
+        while True:
+            message = input("Enter your message: ")
+
+            if message == "exit":
+                print("Closing connection...")
+                self.udp_socket.close()
+                print("Connection closed.")
+                exit()
+
+            # メッセージを送信
+            self.udp_socket.sendto(
+                f"{self.name}: {message}".encode("utf-8"), self.server_address
+            )
+
+    # メッセージを受信する関数
+    def receive_message(self):
+        while True:
+            # メッセージを受信
+            data, _ = self.udp_socket.recvfrom(4096)
+            print(data.decode("utf-8"))
+
 
 if __name__ == "__main__":
     print("---WELCOME TO THE CHAT MESSENGER PROGRAM!---")
-    while True:
-        username = input("Enter your username: ")
-        if len(username) < 0:
-            print("Username must be at least 1 character long.")
-        # ユーザーがすでに存在してたら、ユーザー名を再入力させる条件分岐を追加
-        else:
-            break
-    # ユーザー入力後にアクションを選ばせる(部屋作成・参加・終了)
-    option = input("0, Send a message(test)\n1. Create a new room\n2. Join an existing room\n3. Quit\nChoose an option: ")
-
-    if option == "1":
-        room_name, token = tcp_connect(username, 1)
-    elif option == "2":
-        room_name, token = tcp_connect(username, 2)
-    elif option == "0":
-        # send_message動作確認用
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            udp_socket.settimeout(60)
-            while True:
-                send_message(udp_socket, "dummy_room", "dummy token")
-                
-    else:
-        exit()
-
-    # メッセージ送信用ソケットは、部屋作成・参加後に作成
-    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # ６０秒間他クライアントからの送信がなかった場合、タイムアウト
-    udp_socket.settimeout(60)
-    # メッセージ送信
-    while True:
-        threading.Thread(target=send_message, args=(udp_socket, room_name, token)).start()
+    client = Client(input("Enter your username: "))
+    client.start()
