@@ -1,4 +1,5 @@
 import socket
+import struct
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -53,12 +54,13 @@ class Server:
     def handle_tcp_conn(self, conn, client_address):
         # クライアントからのデータを受信
         header = conn.recv(32)
-        room_name_size = header[0]
-        operation = header[1]
+        room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
 
         body = conn.recv(4096)
-        room_name = body[:room_name_size].decode("utf-8")
-        user_name = body[room_name_size:].decode("utf-8")
+        decoded_body = body.decode("utf-8")
+
+        room_name = decoded_body[:room_name_size]
+        user_name = decoded_body[room_name_size:]
 
         # operation = 1 ... 部屋作成
         if operation == 1:
