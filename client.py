@@ -49,32 +49,39 @@ class Client:
         self.tcp_socket.sendall(req)
         print(f"request: {req}")
 
-        # サーバーからヘッダーとボディを受信
-        res = self.tcp_socket.recv(4096)
+        # サーバーから新しいヘッダーを受信(state = 1: リクエスト受理)
+        header = self.tcp_socket.recv(32)
+        print("リクエストに成功しました。")
+        print(f"response: {header}")
 
-        print(f"response: {res}")
+        # サーバーから新しいヘッダーを受信(state = 2: リクエストの完了)
+        header = self.tcp_socket.recv(32)
+        print("サーバーへのリクエストが完了しました。レスポンスを待機しています。")
+        print(f"response: {header}")
 
-        # ヘッダーからstateを取得
-        state = res[2]
+        # 新しいヘッダーからstateを取得
+        state = header[2]
         if state == 0:
             if operation == 1:
                 print("部屋 {} は既に存在します。".format(room_name))
             else:
                 print("部屋 {} は存在しません。".format(room_name))
+            self.tcp_socket.close()
+            self.start()
         else:
-            # ヘッダーからトークンを取得
-            self.token = res[32:].decode("utf-8")
-            print("トークン: {}".format(self.token))
+            # トークンを取得
+            if self.token == "":
+                token = self.tcp_socket.recv(4096).decode("utf-8")
+                self.token = token
+                print("トークン: {}".format(token))
 
             self.tcp_socket.close()
-            # UDPソケットをバインド
-            self.udp_socket.bind(("", 0))
-
-        # 他クライアントからのメッセージを別スレッドで受信
-        threading.Thread(target=self.receive_message).start()
 
         # メッセージを送信
         threading.Thread(target=self.send_message).start()
+
+        # 他クライアントからのメッセージを別スレッドで受信
+        threading.Thread(target=self.receive_message).start()
 
     # メッセージを送信する関数
     def send_message(self):
