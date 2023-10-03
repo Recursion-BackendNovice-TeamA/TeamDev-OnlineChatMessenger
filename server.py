@@ -28,6 +28,11 @@ class Server:
                     executor.submit(self.wait_for_tcp_conn)
                     executor.submit(self.receive_message)
 
+                # クライアントからのTCP接続を待機(並列処理)
+                # threading.Thread(target=self.wait_for_tcp_conn).start()
+                # クライアントからのUDP接続経由でメッセージを受信(並列処理)
+                # threading.Thread(target=self.receive_message).start()
+
             except KeyboardInterrupt:
                 print("Keyboard Interrupted")
                 self.tcp_socket.close()
@@ -49,9 +54,7 @@ class Server:
     def handle_tcp_conn(self, conn, client_address):
         # クライアントからのデータを受信
         header = conn.recv(32)
-        room_name_size, operation, state, operation_payload_size = struct.unpack(
-            "!B B B 29s", header
-        )
+        room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
 
         body = conn.recv(4096)
         decoded_body = body.decode("utf-8")
@@ -71,10 +74,6 @@ class Server:
     def create_room(self, room_name, conn, client_address, user_name):
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
-            # クライアントに新しいヘッダーを送信(state = 1)
-            header = bytes([len(room_name), 2, 1]) + b"0" * 29
-            conn.sendall(header)
-
             # 部屋を作成
             new_room = ChatRoom(room_name)
             self.rooms[room_name] = new_room
@@ -90,24 +89,24 @@ class Server:
 
             # クライアントをホストに設定
             client.is_host = True
-            print("{} が部屋 {} のホストになりました。".format(user_name, room_name))
 
             # クライアントに新しいヘッダーを送信(state = 2)
-            header = bytes([len(room_name), 1, 2]) + b"0" * 29
+            res = bytes([len(room_name), 1, 2]) + b"0" * 29
+            conn.sendall(res)
 
-            conn.sendall(header + token.encode("utf-8"))
         else:
+            print("部屋 {} は既に存在します。".format(room_name))
             # クライアントに新しいヘッダーを送信(state = 0)
-            header = bytes([len(room_name), 1, 0]) + b"0" * 29
-            conn.sendall(header)
+            res = b"\x00\x01\x00" + b"0" * 29
+            conn.sendall(res)
 
     # クライアントを部屋に参加させる関数
     def assign_room(self, room_name, conn, client_address, user_name):
         # 部屋が存在する場合
         if room_name in self.rooms:
             # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_new_header(conn, room_name, 2, 1)
-
+            res = bytes([len(room_name), 1, 1]) + b"0" * 29
+            conn.sendall(res)
             room = self.rooms[room_name]
 
             # クライアントにトークンを発行
@@ -118,17 +117,14 @@ class Server:
             room.add_client(token, client)
             print("{} が部屋 {} に参加しました。".format(user_name, room_name))
 
-            # クライアントに新しいヘッダーとトークンを送信(state = 2)
-            self.send_new_header(conn, room_name, 2, 2)
-            conn.sendall(token.encode("utf-8"))
+            # クライアントに新しいヘッダーを送信(state = 2)
+            res = b"\x00\x01\x02" + b"0" * 29
+            conn.sendall(res)
         else:
+            print("部屋 {} は存在しません。".format(room_name))
             # クライアントに新しいヘッダーを送信(state = 0)
-            self.send_new_header(conn, room_name, 2, 0)
-
-    # ヘッダーを更新して送信する関数
-    def send_new_header(self, conn, room_name, operation, state):
-        header = bytes([len(room_name), operation, state]) + b"0" * 29
-        conn.sendall(header)
+            res = b"\x00\x02\x00" + b"0" * 29
+            conn.sendall(res)
 
     # クライアントからのUDP接続経由でメッセージを受信する関数
     def receive_message(self):
