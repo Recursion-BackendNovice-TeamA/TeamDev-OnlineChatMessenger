@@ -47,11 +47,12 @@ class Client:
         # ヘッダーとボディをサーバーに送信
         req = header + body
         self.tcp_socket.sendall(req)
-        print(req)
+        print(f"request: {req}")
 
         # サーバーからヘッダーとボディを受信
         res = self.tcp_socket.recv(4096)
-        print(res)
+
+        print(f"response: {res}")
 
         # ヘッダーからstateを取得
         state = res[2]
