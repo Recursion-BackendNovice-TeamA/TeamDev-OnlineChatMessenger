@@ -72,8 +72,7 @@ class Server:
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
             # クライアントに新しいヘッダーを送信(state = 1)
-            header = bytes([len(room_name), 2, 1]) + b"0" * 29
-            conn.sendall(header)
+            self.send_new_header(conn, room_name, 1, 1)
 
             # 部屋を作成
             new_room = ChatRoom(room_name)
@@ -93,13 +92,13 @@ class Server:
             print("{} が部屋 {} のホストになりました。".format(user_name, room_name))
 
             # クライアントに新しいヘッダーを送信(state = 2)
-            header = bytes([len(room_name), 1, 2]) + b"0" * 29
+            self.send_new_header(conn, room_name, 1, 2)
 
-            conn.sendall(header + token.encode("utf-8"))
+            # トークンをクライアントに送信
+            conn.sendall(token.encode("utf-8"))
         else:
-            # クライアントに新しいヘッダーを送信(state = 0)
-            header = bytes([len(room_name), 1, 0]) + b"0" * 29
-            conn.sendall(header)
+            self.send_new_header(conn, room_name, 1, 1)
+            self.send_new_header(conn, room_name, 1, 0)
 
     # クライアントを部屋に参加させる関数
     def assign_room(self, room_name, conn, client_address, user_name):
@@ -118,11 +117,13 @@ class Server:
             room.add_client(token, client)
             print("{} が部屋 {} に参加しました。".format(user_name, room_name))
 
-            # クライアントに新しいヘッダーとトークンを送信(state = 2)
+            # クライアントに新しいヘッダーを送信(state = 2)
             self.send_new_header(conn, room_name, 2, 2)
+
+            # トークンをクライアントに送信
             conn.sendall(token.encode("utf-8"))
         else:
-            # クライアントに新しいヘッダーを送信(state = 0)
+            self.send_new_header(conn, room_name, 2, 1)
             self.send_new_header(conn, room_name, 2, 0)
 
     # ヘッダーを更新して送信する関数

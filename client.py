@@ -51,7 +51,7 @@ class Client:
 
         # サーバーから新しいヘッダーを受信(state = 1: リクエスト受理)
         header = self.tcp_socket.recv(32)
-        print("リクエストに成功しました。")
+        print("サーバーがリクエストを受信しました。")
         print(f"response: {header}")
 
         # サーバーから新しいヘッダーを受信(state = 2: リクエストの完了)
