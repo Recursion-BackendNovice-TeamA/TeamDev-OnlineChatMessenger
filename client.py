@@ -13,7 +13,8 @@ class Client:
         self.token = ""
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.address = self.udp_socket.getsockname()[0]
+        self.udp_socket.bind(('0.0.0.0', 0))
+        self.address = self.udp_socket.getsockname()
 
     # クライアントを起動する関数
     def start(self):
@@ -105,7 +106,7 @@ class Client:
         
         # メッセージを入力させる
         while True:
-            message = input("Enter your message: ")
+            message = input("")
 
             if message == "exit":
                 print("Closing connection...")
@@ -121,11 +122,10 @@ class Client:
     # メッセージを受信する関数
     def receive_message(self):
         while True:
-            print("aaa")
             # メッセージを受信
             data, _ = self.udp_socket.recvfrom(4096)
             decoded_data = data.decode("utf-8")
-            print(f"receive message: {decoded_data}")
+            print(f"{decoded_data}")
 
 
 if __name__ == "__main__":

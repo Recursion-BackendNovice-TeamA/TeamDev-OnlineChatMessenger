@@ -19,6 +19,7 @@ class Server:
         # room_name: ChatRoom インスタンスの辞書
         self.rooms = {}
 
+
     # サーバー起動の関数
     def start(self):
         print("Server Started on port", 9002)
@@ -103,7 +104,7 @@ class Server:
             print(f"{user_name}が{room_name}を作成しました。")
 
             # クライアントにトークンを発行
-            client = ChatClient(name=user_name, tcp_addr=client_address)
+            client = ChatClient(name=user_name, address=client_address)
             token = new_room.generate_token()
             client.token = token
 
@@ -136,7 +137,7 @@ class Server:
 
             # クライアントにトークンを発行
             token = room.generate_token()
-            client = ChatClient(name=user_name, tcp_addr=client_address)
+            client = ChatClient(name=user_name, address=client_address)
             client.token = token
             # 部屋にユーザーを追加
             room.add_client(token, client)
@@ -171,7 +172,6 @@ class Server:
         )
 
         conn.sendall(header + res_payload)
-=======
 
 
     def receive_message(self):
@@ -192,30 +192,19 @@ class Server:
             sender_address (tuple): メッセージ送信者のアドレス（IPアドレスとポート番号)
         """
 
+        _ , sender_port =  sender_address
         # 受け取ったメッセージを部屋内の全クライアントに中継
-        # print(f"self.rooms:{self.rooms}")
         for room_name in self.rooms:
             room = self.rooms[room_name]
-            # print(f"room:{room}")
-            # print(f"room.clients:{room.clients}")
             # if sender_address in room.clients:
-            #     print(f"sender_address:{sender_address}")
-            #     client = room.clients[sender_address]
-            #     room.add_message(client.token, client.name, data)
-            print(f"room.clients: {room.clients}")
-            print(f"sender_address: {sender_address}")
-            sender_host,sender_port =  sender_address
-            client.udp_addr = sender_address
+                # client = room.clients[sender_address]
+                # room.add_message(client.token, client.name, data)
             for client in room.clients.values():
+                _ , client_port = client.address
                 # host, port = client.address
-                # print(f"client: {client.address}")
                 # room.clients[client].send_message(data)
-                if sender_address != client.udp_addr:
-                    print(client.udp_addr)
-                    # print(client)
-                    # print(client.address)
-                    self.udp_socket.sendto(data, client.udp_addr)
-                    # self.udp_socket.sendto(data, sender_address)
+                if sender_port != client_port:
+                    self.udp_socket.sendto(data, tuple(client.address))
 
 
 if __name__ == "__main__":
