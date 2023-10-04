@@ -1,4 +1,5 @@
 import socket
+import json
 import struct
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -57,7 +58,13 @@ class Server:
         decoded_body = body.decode("utf-8")
 
         room_name = decoded_body[:room_name_size]
-        user_name = decoded_body[room_name_size:]
+        payload_data = decoded_body[room_name_size:]
+
+        # payloadはjson形式の文字列とする
+        # payloadをloadsして辞書に変換
+        payload = json.loads(payload_data)
+        user_name = payload["user_name"]
+        client_address = payload["address"]
 
         # operation = 1 ... 部屋作成
         if operation == 1:
@@ -72,7 +79,7 @@ class Server:
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
             # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_new_header(conn, room_name, 1, 1)
+            self.send_state_res(conn, room_name, 1, 1, "")
 
             # 部屋を作成
             new_room = ChatRoom(room_name)
@@ -92,20 +99,16 @@ class Server:
             print("{} が部屋 {} のホストになりました。".format(user_name, room_name))
 
             # クライアントに新しいヘッダーを送信(state = 2)
-            self.send_new_header(conn, room_name, 1, 2)
-
-            # トークンをクライアントに送信
-            conn.sendall(token.encode("utf-8"))
+            self.send_state_res(conn, room_name, 1, 2, token)
         else:
-            self.send_new_header(conn, room_name, 1, 1)
-            self.send_new_header(conn, room_name, 1, 0)
+            self.send_state_res(conn, room_name, 1, 0, "")
 
     # クライアントを部屋に参加させる関数
     def assign_room(self, room_name, conn, client_address, user_name):
         # 部屋が存在する場合
         if room_name in self.rooms:
             # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_new_header(conn, room_name, 2, 1)
+            self.send_state_res(conn, room_name, 2, 1, "")
 
             room = self.rooms[room_name]
 
@@ -118,18 +121,34 @@ class Server:
             print("{} が部屋 {} に参加しました。".format(user_name, room_name))
 
             # クライアントに新しいヘッダーを送信(state = 2)
-            self.send_new_header(conn, room_name, 2, 2)
-
-            # トークンをクライアントに送信
-            conn.sendall(token.encode("utf-8"))
+            self.send_state_res(conn, room_name, 2, 2, token)
         else:
-            self.send_new_header(conn, room_name, 2, 1)
-            self.send_new_header(conn, room_name, 2, 0)
+            self.send_state_res(conn, room_name, 2, 0, "")
 
-    # ヘッダーを更新して送信する関数
-    def send_new_header(self, conn, room_name, operation, state):
-        header = bytes([len(room_name), operation, state]) + b"0" * 29
-        conn.sendall(header)
+    # リクエストの状態に応じてヘッダーとペイロードを送信する関数
+    def send_state_res(self, conn, room_name, operation, state, token):
+        if state == 0:
+            payload_data = (
+                {"status": 400, "message": "部屋 {} はすでに存在します".format(room_name)}
+                if operation == 1
+                else {"status": 404, "message": "部屋 {} は存在しません".format(room_name)}
+            )
+        elif state == 1:
+            payload_data = {"status": 200, "message": "リクエストを受理しました。"}
+        else:
+            payload_data = {"status": 202, "message": "リクエストを完了しました。", "token": token}
+
+        res_payload = json.dumps(payload_data).encode("utf-8")
+
+        header = struct.pack(
+            "!B B B 29s",
+            len(room_name),
+            operation,
+            state,
+            len(res_payload).to_bytes(29, byteorder="big"),
+        )
+
+        conn.sendall(header + res_payload)
 
     # クライアントからのUDP接続経由でメッセージを受信する関数
     def receive_message(self):
