@@ -92,7 +92,7 @@ def tcrp_test_host():
     # state を　1に変えてクライアントに返信する
     changed_state0to1 = header[:2] + (1).to_bytes(1, "big") + pay + body
     # tcp_socket.sendto(changed_state0to1, address)
-
+    print(len(changed_state0to1))
     # client の処理
     # state == 1　を受け取ったので受信待ちに移行する
     # bodyの情報も見れるのでロスがないかわかる
@@ -104,13 +104,21 @@ def tcrp_test_host():
     # Server が ChatRoom を作り、 ChatRoom を server.chatrooms{roomname: ChatRoom}　で管理する
     # ChatRoom が ClientInfo とtokenを作る　ChatRoom.clients{} で管理
     # state == 2 で payload が　token　で送信する
-    # token　は　random.randint(0,255).to_bytes(1,'big')で作り byteで保管する
+    # token　は　random.randint(0,256).to_bytes(1,'big')で作り byteで保管する
+
+
+tcrp_test_host()
 
 
 # stage2 client ---> server Max4096byte
 # header(2byte): RoomNameSize(1byte) | TokenSize(1byte)
 # body: RoomName | token | message
 def client_sendto():
+    # roomname とtokenはある
+    # header = (len(roomname.encode())).to_bytes(1,'big') + (len(token)).to_bytes(1,'big')
+    # body = roomname.encode() + token + message.encode()
+    # if len(header + body) <= 4096:
+    #    udp_socket.sendto(header+body, server_address)
     print("")
 
 

@@ -19,8 +19,7 @@ async def send_message():
 
 async def handler():
     while True:
-        await send_message()
-        await recv_message()
+        asyncio.gather(send_message(), recv_message())
 
 
 def main():
