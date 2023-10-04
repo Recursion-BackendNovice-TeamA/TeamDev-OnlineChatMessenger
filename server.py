@@ -29,6 +29,11 @@ class Server:
                     executor.submit(self.wait_for_tcp_conn)
                     executor.submit(self.receive_message)
 
+                # クライアントからのTCP接続を待機(並列処理)
+                # threading.Thread(target=self.wait_for_tcp_conn).start()
+                # クライアントからのUDP接続経由でメッセージを受信(並列処理)
+                # threading.Thread(target=self.receive_message).start()
+
             except KeyboardInterrupt:
                 print("Keyboard Interrupted")
                 self.tcp_socket.close()
@@ -50,9 +55,7 @@ class Server:
     def handle_tcp_conn(self, conn, client_address):
         # クライアントからのデータを受信
         header = conn.recv(32)
-        room_name_size, operation, state, operation_payload_size = struct.unpack(
-            "!B B B 29s", header
-        )
+        room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
 
         body = conn.recv(4096)
         decoded_body = body.decode("utf-8")
@@ -81,6 +84,7 @@ class Server:
             # クライアントに新しいヘッダーを送信(state = 1)
             self.send_state_res(conn, room_name, 1, 1, "")
 
+
             # 部屋を作成
             new_room = ChatRoom(room_name)
             self.rooms[room_name] = new_room
@@ -96,7 +100,6 @@ class Server:
 
             # クライアントをホストに設定
             client.is_host = True
-            print("{} が部屋 {} のホストになりました。".format(user_name, room_name))
 
             # クライアントに新しいヘッダーを送信(state = 2)
             self.send_state_res(conn, room_name, 1, 2, token)
@@ -149,6 +152,8 @@ class Server:
         )
 
         conn.sendall(header + res_payload)
+=======
+
 
     # クライアントからのUDP接続経由でメッセージを受信する関数
     def receive_message(self):

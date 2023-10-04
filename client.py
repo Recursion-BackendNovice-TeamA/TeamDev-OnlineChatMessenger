@@ -89,12 +89,14 @@ class Client:
                 print("トークン: {}".format(token))
 
             self.tcp_socket.close()
-
-        # メッセージを送信
-        threading.Thread(target=self.send_message).start()
+            # UDPソケットをバインド
+            self.udp_socket.bind(("", 0))
 
         # 他クライアントからのメッセージを別スレッドで受信
         threading.Thread(target=self.receive_message).start()
+
+        # メッセージを送信
+        threading.Thread(target=self.send_message).start()
 
     # メッセージを送信する関数
     def send_message(self):
