@@ -6,7 +6,8 @@ import threading
 class Client:
     def __init__(self, name):
         self.name = name
-        self.server_address = ("0.0.0.0", 9002)
+        self.tcp_address = ("0.0.0.0", 9002)
+        self.udp_address = ("0.0.0.0", 9003)
         self.token = ""
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -28,7 +29,7 @@ class Client:
     def tcp_connect(self, operation):
         # サーバーにTCP接続
         # TCPサーバーのポート：9002
-        self.tcp_socket.connect(self.server_address)
+        self.tcp_socket.connect(self.tcp_address)
 
         # 入室リクエストを送信・レスポンス待機
         self.tcp_request(operation)
@@ -68,7 +69,7 @@ class Client:
 
             self.tcp_socket.close()
             # UDPソケットをバインド
-            self.udp_socket.bind(("", 0))
+            # self.udp_socket.bind(("", 0))
 
         # 他クライアントからのメッセージを別スレッドで受信
         threading.Thread(target=self.receive_message).start()
@@ -76,8 +77,10 @@ class Client:
         # メッセージを送信
         threading.Thread(target=self.send_message).start()
 
-    # メッセージを送信する関数
     def send_message(self):
+        """メッセージを送信する関数
+        """
+        
         # メッセージを入力させる
         while True:
             message = input("Enter your message: ")
@@ -90,15 +93,17 @@ class Client:
 
             # メッセージを送信
             self.udp_socket.sendto(
-                f"{self.name}: {message}".encode("utf-8"), self.server_address
+                f"{self.name}: {message}".encode("utf-8"), self.udp_address
             )
 
     # メッセージを受信する関数
     def receive_message(self):
         while True:
+            print("aaa")
             # メッセージを受信
             data, _ = self.udp_socket.recvfrom(4096)
-            print(data.decode("utf-8"))
+            decoded_data = data.decode("utf-8")
+            print(f"receive message: {decoded_data}")
 
 
 if __name__ == "__main__":

@@ -2,12 +2,19 @@ import socket
 
 
 class ChatClient:
-    def __init__(self, name, address):
+    def __init__(
+        self, 
+        name="",
+        udp_addr=None,
+        tcp_addr=None,
+        token="",
+        is_host=False,
+    ):
         self.name = name
-        self.address = address
-        self.token = ""
-        self.is_host = False
-        self.address = ("", 0)
+        self.tcp_addr = tcp_addr
+        self.udp_addr = udp_addr
+        self.token = token
+        self.is_host = is_host
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # メッセージを送信する関数
