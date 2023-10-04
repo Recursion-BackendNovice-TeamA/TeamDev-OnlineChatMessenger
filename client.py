@@ -1,4 +1,6 @@
 import socket
+import json
+import struct
 import threading
 
 
@@ -10,6 +12,7 @@ class Client:
         self.token = ""
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.address = self.udp_socket.getsockname()[0]
 
     # クライアントを起動する関数
     def start(self):
@@ -38,33 +41,52 @@ class Client:
         # 部屋名を入力させる
         room_name = input("Enter room name: ")
 
+        payload = {
+            "user_name": self.name,
+            "address": self.address,
+        }
+
+        payload_data = json.dumps(payload).encode("utf-8")
+
         # ヘッダーを作成(state = 0)
-        header = bytes([len(room_name), operation, 0]) + b"0" * 29
+        header = struct.pack(
+            "!B B B 29s",
+            len(room_name),
+            operation,
+            0,
+            len(payload_data).to_bytes(29, byteorder="big"),
+        )
 
         # ボディを作成
-        body = room_name.encode("utf-8") + self.name.encode("utf-8")
+        body = room_name.encode("utf-8") + payload_data
 
         # ヘッダーとボディをサーバーに送信
         req = header + body
         self.tcp_socket.sendall(req)
         print(f"request: {req}")
 
-        # サーバーからヘッダーとボディを受信
-        res = self.tcp_socket.recv(4096)
+        # サーバーから新しいレスポンスを受信(state = 1: リクエスト受理)
+        header = self.tcp_socket.recv(32)
+        payload_size = int.from_bytes(header[3:], byteorder="big")
+        payload = self.tcp_socket.recv(payload_size)
 
-        print(f"response: {res}")
+        # サーバーから新しいレスポンスを受信(state = 2: リクエストの完了)
+        header = self.tcp_socket.recv(32)
+        payload_size = int.from_bytes(header[3:], byteorder="big")
+        payload = self.tcp_socket.recv(payload_size)
 
-        # ヘッダーからstateを取得
-        state = res[2]
+        # 新しいヘッダーからstateを取得
+        state = header[2]
         if state == 0:
-            if operation == 1:
-                print("部屋 {} は既に存在します。".format(room_name))
-            else:
-                print("部屋 {} は存在しません。".format(room_name))
+            print(json.loads(payload.decode("utf-8"))["message"])
+            self.tcp_socket.close()
+            self.start()
         else:
-            # ヘッダーからトークンを取得
-            self.token = res[32:].decode("utf-8")
-            print("トークン: {}".format(self.token))
+            # トークンを取得
+            if self.token == "":
+                token = json.loads(payload.decode("utf-8"))["token"]
+                self.token = token
+                print("トークン: {}".format(token))
 
             self.tcp_socket.close()
             # UDPソケットをバインド
