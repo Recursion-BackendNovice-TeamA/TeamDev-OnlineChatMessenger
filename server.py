@@ -55,7 +55,9 @@ class Server:
     def handle_tcp_conn(self, conn, client_address):
         # クライアントからのデータを受信
         header = conn.recv(32)
-        room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
+        room_name_size, operation, state, operation_payload_size = struct.unpack(
+            "!B B B 29s", header
+        )
 
         body = conn.recv(4096)
         decoded_body = body.decode("utf-8")
@@ -79,12 +81,10 @@ class Server:
 
     # 部屋を作成する関数
     def create_room(self, room_name, conn, client_address, user_name):
+        # クライアントに新しいヘッダーを送信(state = 1)
+        self.send_state_res(conn, room_name, 1, 1, "")
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
-            # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_state_res(conn, room_name, 1, 1, "")
-
-
             # 部屋を作成
             new_room = ChatRoom(room_name)
             self.rooms[room_name] = new_room
@@ -108,11 +108,10 @@ class Server:
 
     # クライアントを部屋に参加させる関数
     def assign_room(self, room_name, conn, client_address, user_name):
+        # クライアントに新しいヘッダーを送信(state = 1)
+        self.send_state_res(conn, room_name, 2, 1, "")
         # 部屋が存在する場合
         if room_name in self.rooms:
-            # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_state_res(conn, room_name, 2, 1, "")
-
             room = self.rooms[room_name]
 
             # クライアントにトークンを発行
@@ -152,8 +151,6 @@ class Server:
         )
 
         conn.sendall(header + res_payload)
-=======
-
 
     # クライアントからのUDP接続経由でメッセージを受信する関数
     def receive_message(self):
