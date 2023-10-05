@@ -109,8 +109,7 @@ class Server:
 
             # クライアントにトークンを発行
             client = ChatClient(name=user_name, address=client_address)
-            token = new_room.generate_token()
-            client.token = token
+            token = client.token
 
             # 部屋にユーザーを追加
             new_room.add_client(token, client)
@@ -144,9 +143,8 @@ class Server:
             room = self.rooms[room_name]
 
             # クライアントにトークンを発行
-            token = room.generate_token()
             client = ChatClient(name=user_name, address=client_address)
-            client.token = token
+            token = client.token
             # 部屋にユーザーを追加
             room.add_client(token, client)
             print(f"{user_name}が{room_name}に参加しました。")

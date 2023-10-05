@@ -1,5 +1,6 @@
 import socket
 import threading
+import secrets
 
 
 class ChatRoom:
@@ -8,7 +9,7 @@ class ChatRoom:
     def __init__(self, room_name):
         self.name = room_name
         self.max_clients = 1000
-        self.host_token = ""
+        self.host_token = secrets.token_bytes(16)
         self.clients = {}  # クライアント名:クライアントオブジェクトの辞書
         self.tokens_to_addrs = {}  # トークンの辞書:IPアドレスの辞書
         self.messages = []  # チャットメッセージの履歴
