@@ -98,12 +98,10 @@ class Server:
             client_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
             user_name (str): ユーザー名
         """
+        # クライアントに新しいヘッダーを送信(state = 1)
+        self.send_state_res(conn, room_name, 1, 1, "")
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
-            # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_state_res(conn, room_name, 1, 1, "")
-
-
             # 部屋を作成
             new_room = ChatRoom(room_name)
             self.rooms[room_name] = new_room
@@ -139,11 +137,10 @@ class Server:
         Todo:
             同姓同名の人物がいる場合の処理
         """
+        # クライアントに新しいヘッダーを送信(state = 1)
+        self.send_state_res(conn, room_name, 2, 1, "")
         # 部屋が存在する場合
         if room_name in self.rooms:
-            # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_state_res(conn, room_name, 2, 1, "")
-
             room = self.rooms[room_name]
 
             # クライアントにトークンを発行
@@ -183,7 +180,6 @@ class Server:
         )
 
         conn.sendall(header + res_payload)
-
 
     def receive_message(self):
         """クライアントからのUDP接続経由でメッセージを受信する関数"""
