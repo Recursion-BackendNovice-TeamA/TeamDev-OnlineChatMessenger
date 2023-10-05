@@ -20,7 +20,6 @@ class Server:
         self.rooms = {}
         self.HEADER_BYTE_SIZE = 32
 
-
     # サーバー起動の関数
     def start(self):
         print("Server Started on port", 9002)
@@ -54,40 +53,8 @@ class Server:
             ).start()
 
     def handle_tcp_conn(self, conn, client_address):
-<<<<<<< HEAD
-        # クライアントからのデータを受信
-        header = conn.recv(32)
-        room_name_size, operation, state, operation_payload_size = struct.unpack(
-            "!B B B 29s", header
-        )
-
-        # クライアントにstate = 1を送信
-        res_header = struct.pack(
-            "!B B B 29s", room_name_size, operation, 1, operation_payload_size
-        )
-        conn.send(res_header)
-
-        # bodyにクライアントからのdataを全て受け取るため
-        body = None
-        while True:
-            data = conn.recv(4096)
-            if data is None:
-                break
-            body += data
-||||||| 97f049f
-        # クライアントからのデータを受信
-        header = conn.recv(32)
-        room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
-=======
         """クライアントからのTCP接続を処理する関数
->>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
 
-<<<<<<< HEAD
-        decoded_body = body.decode("utf-8")
-||||||| 97f049f
-        body = conn.recv(4096)
-        decoded_body = body.decode("utf-8")
-=======
         Args:
             conn (socket.socket): 接続されたクライアントのソケットオブジェクト
             client_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
@@ -95,9 +62,10 @@ class Server:
         try:
             # クライアントからのデータを受信
             header = conn.recv(self.HEADER_BYTE_SIZE)
-            room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
+            room_name_size, operation, state, operation_payload_size = struct.unpack(
+                "!B B B 29s", header
+            )
             body = conn.recv(4096)
->>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
 
             room_name = body[:room_name_size].decode("utf-8")
             payload_data = body[room_name_size:].decode("utf-8")
@@ -112,7 +80,6 @@ class Server:
             server.tcp_socket.close()
             server.udp_socket.close()
             exit()
-        
 
         # operation = 1 ... 部屋作成
         if operation == 1:
@@ -140,21 +107,10 @@ class Server:
             self.rooms[room_name] = new_room
             print(f"{user_name}が{room_name}を作成しました。")
 
-<<<<<<< HEAD
-            # クライアント生成時にトークンを発行
-            client = ChatClient(user_name, client_address)
-            token = client.token
-||||||| 97f049f
-            # クライアントにトークンを発行
-            client = ChatClient(user_name, client_address)
-            token = new_room.generate_token()
-            client.token = token
-=======
             # クライアントにトークンを発行
             client = ChatClient(name=user_name, address=client_address)
             token = new_room.generate_token()
             client.token = token
->>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
 
             # 部屋にユーザーを追加
             new_room.add_client(token, client)
@@ -185,32 +141,12 @@ class Server:
         self.send_state_res(conn, room_name, 2, 1, "")
         # 部屋が存在する場合
         if room_name in self.rooms:
-<<<<<<< HEAD
-            # クライアントに新しいヘッダーを送信(state = 1)
-            # self.send_state_res(conn, room_name, 2, 1, "")
-
-||||||| 97f049f
-            # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_state_res(conn, room_name, 2, 1, "")
-
-=======
->>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
             room = self.rooms[room_name]
 
             # クライアントにトークンを発行
-<<<<<<< HEAD
-            client = ChatClient(client_address, user_name)
-            token = client.token
-
-||||||| 97f049f
-            token = room.generate_token()
-            client = ChatClient(client_address, user_name)
-            client.token = token
-=======
             token = room.generate_token()
             client = ChatClient(name=user_name, address=client_address)
             client.token = token
->>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
             # 部屋にユーザーを追加
             room.add_client(token, client)
             print(f"{user_name}が{room_name}に参加しました。")
@@ -244,17 +180,9 @@ class Server:
         )
 
         conn.sendall(header + res_payload)
-<<<<<<< HEAD
 
     # クライアントからのUDP接続経由でメッセージを受信する関数
-||||||| 97f049f
-=======
 
-
-    # クライアントからのUDP接続経由でメッセージを受信する関数
-=======
-
->>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
     def receive_message(self):
         """クライアントからのUDP接続経由でメッセージを受信する関数"""
         HEADER_SIZE = 1
@@ -263,17 +191,16 @@ class Server:
             data, sender_address = self.udp_socket.recvfrom(4096)
 
             # Todo トークンも変換
-            room_name_size = struct.unpack('!B', data[:1])[0]
-            room_name = data[HEADER_SIZE:HEADER_SIZE + room_name_size].decode('utf-8')
-            message = data[HEADER_SIZE + room_name_size:]
-
+            room_name_size = struct.unpack("!B", data[:1])[0]
+            room_name = data[HEADER_SIZE : HEADER_SIZE + room_name_size].decode("utf-8")
+            message = data[HEADER_SIZE + room_name_size :]
 
             # クライアントからのメッセージを処理(並列処理)
             threading.Thread(
                 target=self.handle_message, args=(message, room_name, sender_address)
             ).start()
 
-    def handle_message(self, message,room_name, sender_address):
+    def handle_message(self, message, room_name, sender_address):
         """クライアントからのメッセージを処理する関数
 
         Args:
@@ -282,18 +209,18 @@ class Server:
             sender_address (tuple): メッセージ送信者のアドレス（IPアドレスとポート番号)
         """
 
-        _ , sender_port =  sender_address
+        _, sender_port = sender_address
         # 受け取ったメッセージを部屋内の全クライアントに中継
         for client in self.rooms[room_name].clients.values():
-            _ , client_port = client.address
+            _, client_port = client.address
             if sender_port != client_port:
                 self.udp_socket.sendto(message, tuple(client.address))
 
         # if sender_address in room.clients:
-            # client = room.clients[sender_address]
-            # room.add_message(client.token, client.name, message)
-            # host, port = client.address
-            # room.clients[client].send_message(message)
+        # client = room.clients[sender_address]
+        # room.add_message(client.token, client.name, message)
+        # host, port = client.address
+        # room.clients[client].send_message(message)
 
 
 if __name__ == "__main__":
