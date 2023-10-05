@@ -14,6 +14,7 @@ class ChatClient:
         self.token = token
         self.is_host = is_host
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.room_name = ""
 
     # メッセージを送信する関数
     def send_message(self, message):
