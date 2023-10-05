@@ -1,13 +1,14 @@
 import socket
+import secrets
 
 
 class ChatClient:
     def __init__(self, name, address):
         self.name = name
         self.address = address
-        self.token = ""
+        # トークンをrandomで生成する関数
+        self.token = secrets.token_bytes(255)
         self.is_host = False
-        self.address = ("", 0)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # メッセージを送信する関数

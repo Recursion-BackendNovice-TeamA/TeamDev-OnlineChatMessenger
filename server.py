@@ -55,9 +55,24 @@ class Server:
     def handle_tcp_conn(self, conn, client_address):
         # クライアントからのデータを受信
         header = conn.recv(32)
-        room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
+        room_name_size, operation, state, operation_payload_size = struct.unpack(
+            "!B B B 29s", header
+        )
 
-        body = conn.recv(4096)
+        # クライアントにstate = 1を送信
+        res_header = struct.pack(
+            "!B B B 29s", room_name_size, operation, 1, operation_payload_size
+        )
+        conn.send(res_header)
+
+        # bodyにクライアントからのdataを全て受け取るため
+        body = None
+        while True:
+            data = conn.recv(4096)
+            if data is None:
+                break
+            body += data
+
         decoded_body = body.decode("utf-8")
 
         room_name = decoded_body[:room_name_size]
@@ -81,19 +96,14 @@ class Server:
     def create_room(self, room_name, conn, client_address, user_name):
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
-            # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_state_res(conn, room_name, 1, 1, "")
-
-
             # 部屋を作成
             new_room = ChatRoom(room_name)
             self.rooms[room_name] = new_room
             print(room_name, "を作成しました。")
 
-            # クライアントにトークンを発行
+            # クライアント生成時にトークンを発行
             client = ChatClient(user_name, client_address)
-            token = new_room.generate_token()
-            client.token = token
+            token = client.token
 
             # 部屋にユーザーを追加
             new_room.add_client(token, client)
@@ -111,14 +121,14 @@ class Server:
         # 部屋が存在する場合
         if room_name in self.rooms:
             # クライアントに新しいヘッダーを送信(state = 1)
-            self.send_state_res(conn, room_name, 2, 1, "")
+            # self.send_state_res(conn, room_name, 2, 1, "")
 
             room = self.rooms[room_name]
 
             # クライアントにトークンを発行
-            token = room.generate_token()
             client = ChatClient(client_address, user_name)
-            client.token = token
+            token = client.token
+
             # 部屋にユーザーを追加
             room.add_client(token, client)
             print("{} が部屋 {} に参加しました。".format(user_name, room_name))
@@ -126,18 +136,18 @@ class Server:
             # クライアントに新しいヘッダーを送信(state = 2)
             self.send_state_res(conn, room_name, 2, 2, token)
         else:
-            self.send_state_res(conn, room_name, 2, 0, "")
+            self.send_state_res(conn, room_name, 2, 3, "")
 
     # リクエストの状態に応じてヘッダーとペイロードを送信する関数
     def send_state_res(self, conn, room_name, operation, state, token):
-        if state == 0:
+        if state == 3:
             payload_data = (
                 {"status": 400, "message": "部屋 {} はすでに存在します".format(room_name)}
                 if operation == 1
                 else {"status": 404, "message": "部屋 {} は存在しません".format(room_name)}
             )
-        elif state == 1:
-            payload_data = {"status": 200, "message": "リクエストを受理しました。"}
+        # elif state == 1:
+        #     payload_data = {"status": 200, "message": "リクエストを受理しました。"}
         else:
             payload_data = {"status": 202, "message": "リクエストを完了しました。", "token": token}
 
@@ -152,8 +162,6 @@ class Server:
         )
 
         conn.sendall(header + res_payload)
-=======
-
 
     # クライアントからのUDP接続経由でメッセージを受信する関数
     def receive_message(self):

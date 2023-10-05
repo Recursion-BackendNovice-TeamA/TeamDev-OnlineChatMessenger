@@ -1,6 +1,5 @@
 import socket
 import threading
-import secrets
 
 
 class ChatRoom:
@@ -13,12 +12,6 @@ class ChatRoom:
         self.clients = {}  # クライアント名:クライアントオブジェクトの辞書
         self.tokens_to_addrs = {}  # トークンの辞書:IPアドレスの辞書
         self.messages = []  # チャットメッセージの履歴
-
-    # トークンをrandomで生成する関数
-    def generate_token(self):
-        token = secrets.token_hex(16)
-        self.host_token = token
-        return token
 
     def add_client(self, token, client):
         if len(self.tokens_to_addrs) < self.max_clients:

@@ -22,6 +22,7 @@ class Client:
         )
         if op == "3":
             print("Closing connection...")
+            self.tcp_socket.close
             self.udp_socket.close()
             print("Connection closed.")
             exit()
@@ -51,7 +52,7 @@ class Client:
         # ヘッダーを作成(state = 0)
         header = struct.pack(
             "!B B B 29s",
-            len(room_name),
+            len(room_name.encode()),
             operation,
             0,
             len(payload_data).to_bytes(29, byteorder="big"),
@@ -60,24 +61,33 @@ class Client:
         # ボディを作成
         body = room_name.encode("utf-8") + payload_data
 
-        # ヘッダーとボディをサーバーに送信
-        req = header + body
-        self.tcp_socket.sendall(req)
-        print(f"request: {req}")
+        # ヘッダーをサーバーに送信
+        self.tcp_socket.send(header)
+        # state = 1を受け取ってからbodyを送る
+        if self.tcp_socket.recv(32)[2] == 1:
+            # bodyのデータが空になるまで送る
 
-        # サーバーから新しいレスポンスを受信(state = 1: リクエスト受理)
-        header = self.tcp_socket.recv(32)
-        payload_size = int.from_bytes(header[3:], byteorder="big")
-        payload = self.tcp_socket.recv(payload_size)
-
+            self.tcp_socket.sendall(body)
+        else:
+            self.tcp_socket.close()
+            self.start()
+        print(f"request: {header},{body}")
+        # サーバーから返信が来るまで待機
         # サーバーから新しいレスポンスを受信(state = 2: リクエストの完了)
         header = self.tcp_socket.recv(32)
+        body = None
+        while True:
+            data = self.tcp_socket.recv(4096)
+            if data is None:
+                break
+            body += data
+
         payload_size = int.from_bytes(header[3:], byteorder="big")
         payload = self.tcp_socket.recv(payload_size)
 
         # 新しいヘッダーからstateを取得
         state = header[2]
-        if state == 0:
+        if state == 3:
             print(json.loads(payload.decode("utf-8"))["message"])
             self.tcp_socket.close()
             self.start()
@@ -89,8 +99,6 @@ class Client:
                 print("トークン: {}".format(token))
 
             self.tcp_socket.close()
-            # UDPソケットをバインド
-            self.udp_socket.bind(("", 0))
 
         # 他クライアントからのメッセージを別スレッドで受信
         threading.Thread(target=self.receive_message).start()
