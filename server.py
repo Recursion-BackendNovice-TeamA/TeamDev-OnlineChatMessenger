@@ -18,6 +18,8 @@ class Server:
         self.udp_socket.bind(self.udp_address)
         # room_name: ChatRoom インスタンスの辞書
         self.rooms = {}
+        self.HEADER_BYTE_SIZE = 32
+
 
     # サーバー起動の関数
     def start(self):
@@ -41,8 +43,8 @@ class Server:
                 print("\nServer Closed")
                 break
 
-    # クライアントからのTCP接続を待機する関数
     def wait_for_tcp_conn(self):
+        """クライアントからのTCP接続を待機する関数"""
         while True:
             self.tcp_socket.listen(5)
             conn, client_address = self.tcp_socket.accept()
@@ -51,8 +53,8 @@ class Server:
                 target=self.handle_tcp_conn, args=(conn, client_address)
             ).start()
 
-    # クライアントからのTCP接続を処理する関数
     def handle_tcp_conn(self, conn, client_address):
+<<<<<<< HEAD
         # クライアントからのデータを受信
         header = conn.recv(32)
         room_name_size, operation, state, operation_payload_size = struct.unpack(
@@ -72,17 +74,45 @@ class Server:
             if data is None:
                 break
             body += data
+||||||| 97f049f
+        # クライアントからのデータを受信
+        header = conn.recv(32)
+        room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
+=======
+        """クライアントからのTCP接続を処理する関数
+>>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
 
+<<<<<<< HEAD
         decoded_body = body.decode("utf-8")
+||||||| 97f049f
+        body = conn.recv(4096)
+        decoded_body = body.decode("utf-8")
+=======
+        Args:
+            conn (socket.socket): 接続されたクライアントのソケットオブジェクト
+            client_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
+        """
+        try:
+            # クライアントからのデータを受信
+            header = conn.recv(self.HEADER_BYTE_SIZE)
+            room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
+            body = conn.recv(4096)
+>>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
 
-        room_name = decoded_body[:room_name_size]
-        payload_data = decoded_body[room_name_size:]
+            room_name = body[:room_name_size].decode("utf-8")
+            payload_data = body[room_name_size:].decode("utf-8")
 
-        # payloadはjson形式の文字列とする
-        # payloadをloadsして辞書に変換
-        payload = json.loads(payload_data)
-        user_name = payload["user_name"]
-        client_address = payload["address"]
+            # payloadはjson形式の文字列とする
+            # payloadをloadsして辞書に変換
+            payload = json.loads(payload_data)
+            user_name = payload["user_name"]
+            client_address = payload["address"]
+        except Exception as e:
+            print(e)
+            server.tcp_socket.close()
+            server.udp_socket.close()
+            exit()
+        
 
         # operation = 1 ... 部屋作成
         if operation == 1:
@@ -92,46 +122,98 @@ class Server:
         if operation == 2:
             self.assign_room(room_name, conn, client_address, user_name)
 
-    # 部屋を作成する関数
     def create_room(self, room_name, conn, client_address, user_name):
+        """部屋を作成する関数
+
+        Args:
+            room_name (str): チャットルーム名
+            conn (socket.socket): 接続されたクライアントのソケットオブジェクト
+            client_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
+            user_name (str): ユーザー名
+        """
+        # クライアントに新しいヘッダーを送信(state = 1)
+        self.send_state_res(conn, room_name, 1, 1, "")
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
             # 部屋を作成
             new_room = ChatRoom(room_name)
             self.rooms[room_name] = new_room
-            print(room_name, "を作成しました。")
+            print(f"{user_name}が{room_name}を作成しました。")
 
+<<<<<<< HEAD
             # クライアント生成時にトークンを発行
             client = ChatClient(user_name, client_address)
             token = client.token
+||||||| 97f049f
+            # クライアントにトークンを発行
+            client = ChatClient(user_name, client_address)
+            token = new_room.generate_token()
+            client.token = token
+=======
+            # クライアントにトークンを発行
+            client = ChatClient(name=user_name, address=client_address)
+            token = new_room.generate_token()
+            client.token = token
+>>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
 
             # 部屋にユーザーを追加
             new_room.add_client(token, client)
 
             # クライアントをホストに設定
             client.is_host = True
+            # 作成して参加した部屋名
+            client.room_name = room_name
 
             # クライアントに新しいヘッダーを送信(state = 2)
             self.send_state_res(conn, room_name, 1, 2, token)
         else:
             self.send_state_res(conn, room_name, 1, 0, "")
 
-    # クライアントを部屋に参加させる関数
     def assign_room(self, room_name, conn, client_address, user_name):
+        """クライアントを部屋に参加させる関数
+
+        Args:
+            room_name (str): チャットルーム名
+            conn (socket.socket): 接続されたクライアントのソケットオブジェクト
+            client_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
+            user_name (str): ユーザー名
+
+        Todo:
+            同姓同名の人物がいる場合の処理
+        """
+        # クライアントに新しいヘッダーを送信(state = 1)
+        self.send_state_res(conn, room_name, 2, 1, "")
         # 部屋が存在する場合
         if room_name in self.rooms:
+<<<<<<< HEAD
             # クライアントに新しいヘッダーを送信(state = 1)
             # self.send_state_res(conn, room_name, 2, 1, "")
 
+||||||| 97f049f
+            # クライアントに新しいヘッダーを送信(state = 1)
+            self.send_state_res(conn, room_name, 2, 1, "")
+
+=======
+>>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
             room = self.rooms[room_name]
 
             # クライアントにトークンを発行
+<<<<<<< HEAD
             client = ChatClient(client_address, user_name)
             token = client.token
 
+||||||| 97f049f
+            token = room.generate_token()
+            client = ChatClient(client_address, user_name)
+            client.token = token
+=======
+            token = room.generate_token()
+            client = ChatClient(name=user_name, address=client_address)
+            client.token = token
+>>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
             # 部屋にユーザーを追加
             room.add_client(token, client)
-            print("{} が部屋 {} に参加しました。".format(user_name, room_name))
+            print(f"{user_name}が{room_name}に参加しました。")
 
             # クライアントに新しいヘッダーを送信(state = 2)
             self.send_state_res(conn, room_name, 2, 2, token)
@@ -162,26 +244,56 @@ class Server:
         )
 
         conn.sendall(header + res_payload)
+<<<<<<< HEAD
 
     # クライアントからのUDP接続経由でメッセージを受信する関数
+||||||| 97f049f
+=======
+
+
+    # クライアントからのUDP接続経由でメッセージを受信する関数
+=======
+
+>>>>>>> c7d32c65ed5014789473d49ddb0ee8468ef39c4c
     def receive_message(self):
+        """クライアントからのUDP接続経由でメッセージを受信する関数"""
+        HEADER_SIZE = 1
+
         while True:
-            data, client_address = self.udp_socket.recvfrom(4096)
+            data, sender_address = self.udp_socket.recvfrom(4096)
+
+            # Todo トークンも変換
+            room_name_size = struct.unpack('!B', data[:1])[0]
+            room_name = data[HEADER_SIZE:HEADER_SIZE + room_name_size].decode('utf-8')
+            message = data[HEADER_SIZE + room_name_size:]
+
+
             # クライアントからのメッセージを処理(並列処理)
             threading.Thread(
-                target=self.handle_message, args=(data, client_address)
+                target=self.handle_message, args=(message, room_name, sender_address)
             ).start()
 
-    # クライアントからのメッセージを処理する関数
-    def handle_message(self, data, client_address):
+    def handle_message(self, message,room_name, sender_address):
+        """クライアントからのメッセージを処理する関数
+
+        Args:
+            message (bytes): クライアントから送信されたメッセージ
+            room_name (str): 部屋名
+            sender_address (tuple): メッセージ送信者のアドレス（IPアドレスとポート番号)
+        """
+
+        _ , sender_port =  sender_address
         # 受け取ったメッセージを部屋内の全クライアントに中継
-        for room_name in self.rooms:
-            room = self.rooms[room_name]
-            if client_address in room.clients:
-                client = room.clients[client_address]
-                room.add_message(client.token, client.name, data)
-                for client in room.clients:
-                    room.clients[client].send_message(data)
+        for client in self.rooms[room_name].clients.values():
+            _ , client_port = client.address
+            if sender_port != client_port:
+                self.udp_socket.sendto(message, tuple(client.address))
+
+        # if sender_address in room.clients:
+            # client = room.clients[sender_address]
+            # room.add_message(client.token, client.name, message)
+            # host, port = client.address
+            # room.clients[client].send_message(message)
 
 
 if __name__ == "__main__":
@@ -190,4 +302,6 @@ if __name__ == "__main__":
         server.start()
     except KeyboardInterrupt:
         print("Keyboard Interrupted")
+        server.tcp_socket.close()
+        server.udp_socket.close()
         print("\nServer Closed")
