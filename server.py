@@ -143,7 +143,7 @@ class Server:
             # クライアントに新しいヘッダーを送信(state = 2)
             self.send_state_res(conn, room_name, 1, 2, token)
         else:
-            self.send_state_res(conn, room_name, 1, 0, "")
+            self.send_state_res(conn, room_name, 1, 3, "")
 
     def assign_room(self, room_name, conn, client_address, user_name):
         """クライアントを部屋に参加させる関数
