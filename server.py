@@ -5,7 +5,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from chat_room import ChatRoom
-from chat_client import ChatClient
+from user import User
 
 
 class Server:
@@ -20,6 +20,15 @@ class Server:
         self.rooms = {}
         self.HEADER_BYTE_SIZE = 32
 
+        #クライアントが入力したアクション番号
+        self.CREATE_ROOM_NUM = 1
+        self.JOIN_ROOM_NUM = 2
+        self.QUIT_NUM = 3
+
+        self.SERVER_INIT = 0
+        self.RESPONSE_OF_REQUEST = 1
+        self.REQUEST_COMPLETION = 2
+        self.ERROR_RESPONSE = 3
 
     # サーバー起動の関数
     def start(self):
@@ -82,11 +91,11 @@ class Server:
         
 
         # operation = 1 ... 部屋作成
-        if operation == 1:
+        if operation == self.CREATE_ROOM_NUM:
             self.create_room(room_name, conn, client_address, user_name)
 
         # operation = 2 ... 部屋参加
-        if operation == 2:
+        if operation == self.JOIN_ROOM_NUM:
             self.assign_room(room_name, conn, client_address, user_name)
 
     def create_room(self, room_name, conn, client_address, user_name):
@@ -99,7 +108,7 @@ class Server:
             user_name (str): ユーザー名
         """
         # クライアントに新しいヘッダーを送信(state = 1)
-        self.send_state_res(conn, room_name, 1, 1, "")
+        self.send_state_res(conn, room_name, self.CREATE_ROOM_NUM, self.RESPONSE_OF_REQUEST, "")
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
             # 部屋を作成
@@ -108,7 +117,7 @@ class Server:
             print(f"{user_name}が{room_name}を作成しました。")
 
             # クライアントにトークンを発行
-            client = ChatClient(name=user_name, address=client_address)
+            client = User(name=user_name, address=client_address)
             token = new_room.generate_token()
             client.token = token
 
@@ -145,7 +154,7 @@ class Server:
 
             # クライアントにトークンを発行
             token = room.generate_token()
-            client = ChatClient(name=user_name, address=client_address)
+            client = User(name=user_name, address=client_address)
             client.token = token
             # 部屋にユーザーを追加
             room.add_client(token, client)
@@ -158,13 +167,22 @@ class Server:
 
     # リクエストの状態に応じてヘッダーとペイロードを送信する関数
     def send_state_res(self, conn, room_name, operation, state, token):
-        if state == 0:
+        """_summary_
+
+        Args:
+            conn (_type_): _description_
+            room_name (_type_): _description_
+            operation (_type_): _description_
+            state (_type_): _description_
+            token (_type_): _description_
+        """
+        if state == self.SERVER_INIT:
             payload_data = (
                 {"status": 400, "message": "部屋 {} はすでに存在します".format(room_name)}
                 if operation == 1
                 else {"status": 404, "message": "部屋 {} は存在しません".format(room_name)}
             )
-        elif state == 1:
+        elif state == self.RESPONSE_OF_REQUEST:
             payload_data = {"status": 200, "message": "リクエストを受理しました。"}
         else:
             payload_data = {"status": 202, "message": "リクエストを完了しました。", "token": token}
