@@ -38,6 +38,8 @@ class ChatRoom:
         for client in self.clients.values():
             client.send_message("ホストが退出したため、チャットルームを終了します。")
             client.send_message("exit")
+            # 全clientソケットをclose()してから消すようにする。
+            client.udp_socket.close()
         self.clients = {}
         self.tokens_to_addrs = {}
         self.messages = []
