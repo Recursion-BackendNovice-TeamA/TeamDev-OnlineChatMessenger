@@ -3,27 +3,15 @@ import struct
 
 
 class User:
-    def __init__(
-        self, 
-        name="",
-        address=None,
-        token= "",
-        is_host=False,
-    ):
+    def __init__(self, name):
         self.name = name
-        self.address = address
-        self.token = token
-        self.is_host = is_host
+        self.token = ""
+        self.is_host = False
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp_address = ("0.0.0.0", 9003)
         self.udp_socket.bind(('0.0.0.0', 0))
         self.address = self.udp_socket.getsockname()
         self.room_name = ""
-
-    # メッセージを送信する関数
-    def send_message(self, message):
-        # メッセージを送信
-        self.udp_socket.sendto(message.encode("utf-8"), self.client_address)
 
 
     def input_action_number(self):
@@ -52,6 +40,8 @@ class User:
         while True:
             ROOM_NAME_MAX_BYTE_SIZE = 255
             self.room_name = input("Enter room name: ")
+            if self.room_name == "":
+                continue
             self.room_name_size = len(self.room_name.encode('utf-8'))
             if self.room_name_size > ROOM_NAME_MAX_BYTE_SIZE:
                 print(f"Room name bytes: {self.room_name_size} is too large.")
@@ -70,9 +60,7 @@ class User:
         
         # メッセージを入力させる
         while True:
-            # Todo ヘッダーにRoomNameSizeとTokenSizeを持たせる
-            # header = struct.pack("!B B", self.room_name_size, self.token_size)
-            header = struct.pack("!B", self.room_name_size)
+            header = struct.pack("!B B", self.room_name_size, len(self.token.encode("utf-8")))
 
             input_message = input("")
 
@@ -82,9 +70,7 @@ class User:
                 print("Connection closed.")
                 exit()
 
-            # Todo bodyにトークンを持たせる
-            # body = self.room_name + self.token + input_message
-            body = self.room_name + input_message
+            body = self.room_name + self.token + input_message
             encoded_body = body.encode('utf-8')
 
             message = header + encoded_body

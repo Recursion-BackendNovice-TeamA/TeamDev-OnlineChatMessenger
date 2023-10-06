@@ -35,34 +35,65 @@ class Client:
     def start(self):
         """クライアントを起動する関数"""
 
-        user = User(input("Enter your username: "))
+        # ユーザー名入力
+        user_name = self.__input_user_name()
+        user = User(user_name)
 
-        # ユーザーがアクション(1:部屋作成, 2:参加, 3:終了)を選択
+        # ユーザーがアクション(1:部屋作成, 2:部屋参加, 3:終了)を選択
         operation = user.input_action_number()
-        self.__tcp_connect(int(operation), user)
-
-    def __tcp_connect(self, operation, user):
-        """サーバーにTCP接続
-
-        Args:
-            operation (int): クライアントが入力したアクション番号(1:部屋作成, 2:参加, 3:終了)
-        """
-
-        if operation == self.CREATE_ROOM_NUM or operation == self.JOIN_ROOM_NUM:
-            self.tcp_socket.connect(self.tcp_address)
-            # 入室リクエストを送信・レスポンス待機
-            self.__tcp_request(operation, user)
-        elif operation == self.QUIT_NUM:
+        # TCP接続できたかどうか
+        tcp_connected = self.__is_tcp_connected(int(operation))
+        if not tcp_connected:
             print("Closing connection...")
             self.tcp_socket.close()
             print("Connection closed.")
             exit()
 
-    def __tcp_request(self, operation, user):
+        # 入室リクエストを送信・レスポンス待機
+        self.__request_to_join_room(operation, user)
+
+
+
+    def __input_user_name(self):
+        """ユーザー名入力
+        
+        Returns:
+            (str): ユーザー名
+        """
+        while True:
+            USER_NAME_MAX_BYTE_SIZE = 255
+            user_name = input("Enter your username: ")
+            if user_name == "":
+                continue
+            user_name_size = len(user_name.encode('utf-8'))
+            if user_name_size > USER_NAME_MAX_BYTE_SIZE:
+                print(f"User name bytes: {user_name_size} is too large.")
+                print(f"Please retype the room name with less than {USER_NAME_MAX_BYTE_SIZE} bytes")
+                continue
+            return user_name
+
+    def __is_tcp_connected(self, operation):
+        """TCP接続できたかどうかの判定
+
+        Args:
+            operation (int): クライアントが入力したアクション番号(1:部屋作成, 2:参加, 3:終了)
+
+        Returns:
+            (bool): TCP接続できたかどうか
+        """
+        tcp_connected = False
+        if operation == self.CREATE_ROOM_NUM or operation == self.JOIN_ROOM_NUM:
+            self.tcp_socket.connect(self.tcp_address)
+            tcp_connected = True
+
+        return tcp_connected
+
+
+    def __request_to_join_room(self, operation, user):
         """部屋入室リクエストの関数（部屋作成・部屋参加共通）
 
         Args:
-            operation (int): クライアントが入力したアクション番号(1:部屋作成, 2:参加)
+            operation (str): クライアントが入力したアクション番号(1:部屋作成, 2:参加)
         """
         # 部屋名を入力
         room_name = user.input_room_name()
@@ -70,8 +101,7 @@ class Client:
 
         payload = {
             "user_name": user.name,
-            # "user_name": self.name,
-            "address": self.address,
+            "user_address": user.address,
         }
 
         payload_data = json.dumps(payload).encode("utf-8")
@@ -80,7 +110,7 @@ class Client:
         header = struct.pack(           
             "!B B B 29s",
             len(encoded_room_name),
-            operation,
+            int(operation),
             self.SERVER_INIT,
             len(payload_data).to_bytes(29, byteorder="big"),
         )
@@ -92,14 +122,8 @@ class Client:
         # ヘッダーとボディをサーバーに送信
         req = header + body
         self.tcp_socket.sendall(req)
-        print(f"request: {req}")
 
         # サーバーから新しいレスポンスを受信(state = 1: リクエスト受理)
-        header = self.tcp_socket.recv(32)
-        payload_size = int.from_bytes(header[3:], byteorder="big")
-        payload = self.tcp_socket.recv(payload_size)
-
-        # サーバーから新しいレスポンスを受信(state = 2: リクエストの完了)
         header = self.tcp_socket.recv(32)
         payload_size = int.from_bytes(header[3:], byteorder="big")
         payload = self.tcp_socket.recv(payload_size)
@@ -112,14 +136,12 @@ class Client:
             self.start()
         else:
             # トークンを取得
-            if self.token == "":
+            if user.token == "":
                 token = json.loads(payload.decode("utf-8"))["token"]
-                self.token = token
+                user.token = token
                 print("トークン: {}".format(token))
 
             self.tcp_socket.close()
-            # UDPソケットをバインド
-            # self.udp_socket.bind(("", 0))
 
         # 他クライアントからのメッセージを別スレッドで受信
         threading.Thread(target=user.receive_message).start()
