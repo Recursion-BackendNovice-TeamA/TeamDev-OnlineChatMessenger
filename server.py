@@ -84,10 +84,9 @@ class Server:
         try:
             # クライアントからのデータを受信
             header = conn.recv(self.HEADER_BYTE_SIZE)
-            room_name_size, operation, state, operation_payload_size = struct.unpack(
-                "!B B B 29s", header
-            )
-            body = conn.recv(4096)
+            room_name_size = header[0]
+            operation = header[1]
+            body = self.recvall_32(conn, header)
 
             room_name = body[:room_name_size].decode("utf-8")
             payload_data = body[room_name_size:].decode("utf-8")
@@ -241,6 +240,28 @@ class Server:
         # room.add_message(client.token, client.name, message)
         # host, port = client.address
         # room.clients[client].send_message(message)
+
+    # TCRPのdataを全て受け取る関数
+    def recvall_32(self, conn, header):
+        room_name_size, operation, state, operation_payload_size = struct.unpack(
+            "!B B B 29s", header
+        )
+        # RoomNameSize + Operation + State + PayloadSize の長さ（バイト量）
+        MSGLEN = (
+            int.from_bytes(room_name_size)
+            + len(operation)
+            + len(state)
+            + int.from_bytes(operation_payload_size)
+        )
+        chunks = []
+        bytes_recd = 0
+        while bytes_recd < MSGLEN:
+            chunk = conn.recv(min(MSGLEN - bytes_recd, 4096))
+            if chunk == b"":
+                raise RuntimeError("socket connection broken")
+            chunks.append(chunk)
+            bytes_recd = bytes_recd + len(chunk)
+        return b"".join(chunks)
 
 
 if __name__ == "__main__":
