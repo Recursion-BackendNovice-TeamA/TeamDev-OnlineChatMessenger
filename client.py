@@ -84,7 +84,6 @@ class Client:
         # state = 1を受け取ってからbodyを送る
         if self.tcp_socket.recv(32)[2] == 1:
             # bodyのデータが空になるまで送る
-
             self.tcp_socket.sendall(body)
         else:
             self.tcp_socket.close()
@@ -93,15 +92,8 @@ class Client:
         # サーバーから返信が来るまで待機
         # サーバーから新しいレスポンスを受信(state = 2: リクエストの完了)
         header = self.tcp_socket.recv(32)
-        body = None
-        while True:
-            data = self.tcp_socket.recv(4096)
-            if data is None:
-                break
-            body += data
-
-        payload_size = int.from_bytes(header[3:], byteorder="big")
-        payload = self.tcp_socket.recv(payload_size)
+        data = self.recvall_32(self.tcp_socket, header)
+        payload = data
 
         # 新しいヘッダーからstateを取得
         state = header[2]
@@ -125,6 +117,28 @@ class Client:
 
         # メッセージを送信
         threading.Thread(target=self.send_message).start()
+
+    # TCRPのdataを全て受け取る関数
+    def recvall_32(self, socket, header):
+        room_name_size, operation, state, operation_payload_size = struct.unpack(
+            "!B B B 29s", header
+        )
+        # RoomNameSize + Operation + State + PayloadSize の長さ（バイト量）
+        MSGLEN = (
+            int.from_bytes(room_name_size)
+            + len(operation)
+            + len(state)
+            + int.from_bytes(operation_payload_size)
+        )
+        chunks = []
+        bytes_recd = 0
+        while bytes_recd < MSGLEN:
+            chunk = socket.recv(min(MSGLEN - bytes_recd, 4096))
+            if chunk == b"":
+                raise RuntimeError("socket connection broken")
+            chunks.append(chunk)
+            bytes_recd = bytes_recd + len(chunk)
+        return b"".join(chunks)
 
     def __input_action_number(self):
         """ユーザー入力後にアクションを選ばせる(部屋作成・参加・終了)
