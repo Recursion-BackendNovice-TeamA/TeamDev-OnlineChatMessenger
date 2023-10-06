@@ -5,6 +5,7 @@ import threading
 
 from user import User
 
+
 # ChatClientクラスを定義
 class Client:
     def __init__(self):
@@ -14,14 +15,14 @@ class Client:
         self.token = ""
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.bind(('0.0.0.0', 0))
+        self.udp_socket.bind(("0.0.0.0", 0))
         self.address = self.udp_socket.getsockname()
 
-        #クライアントが入力したアクション番号
+        # クライアントが入力したアクション番号
         self.CREATE_ROOM_NUM = 1
         self.JOIN_ROOM_NUM = 2
         self.QUIT_NUM = 3
-        
+
         # クライアントがサーバーに送信するヘッダー(UDP)
         self.room_name_size = 0
         self.token_size = 0
@@ -30,7 +31,6 @@ class Client:
         self.RESPONSE_OF_REQUEST = 1
         self.REQUEST_COMPLETION = 2
         self.ERROR_RESPONSE = 3
-        
 
     def start(self):
         """クライアントを起動する関数"""
@@ -52,11 +52,9 @@ class Client:
         # 入室リクエストを送信・レスポンス待機
         self.__request_to_join_room(operation, user)
 
-
-
     def __input_user_name(self):
         """ユーザー名入力
-        
+
         Returns:
             (str): ユーザー名
         """
@@ -65,10 +63,12 @@ class Client:
             user_name = input("Enter your username: ")
             if user_name == "":
                 continue
-            user_name_size = len(user_name.encode('utf-8'))
+            user_name_size = len(user_name.encode("utf-8"))
             if user_name_size > USER_NAME_MAX_BYTE_SIZE:
                 print(f"User name bytes: {user_name_size} is too large.")
-                print(f"Please retype the room name with less than {USER_NAME_MAX_BYTE_SIZE} bytes")
+                print(
+                    f"Please retype the room name with less than {USER_NAME_MAX_BYTE_SIZE} bytes"
+                )
                 continue
             return user_name
 
@@ -88,7 +88,6 @@ class Client:
 
         return tcp_connected
 
-
     def __request_to_join_room(self, operation, user):
         """部屋入室リクエストの関数（部屋作成・部屋参加共通）
 
@@ -107,7 +106,7 @@ class Client:
         payload_data = json.dumps(payload).encode("utf-8")
 
         # ヘッダーを作成(state = 0)
-        header = struct.pack(           
+        header = struct.pack(
             "!B B B 29s",
             len(encoded_room_name),
             int(operation),
@@ -148,9 +147,6 @@ class Client:
 
         # メッセージを送信
         threading.Thread(target=user.send_message).start()
-
-
-
 
 
 if __name__ == "__main__":

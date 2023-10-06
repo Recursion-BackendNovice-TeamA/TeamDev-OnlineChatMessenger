@@ -21,7 +21,7 @@ class Server:
         self.rooms = {}
         self.HEADER_BYTE_SIZE = 32
 
-        #クライアントが入力したアクション番号
+        # クライアントが入力したアクション番号
         self.CREATE_ROOM_NUM = 1
         self.JOIN_ROOM_NUM = 2
         self.QUIT_NUM = 3
@@ -73,7 +73,9 @@ class Server:
         try:
             # クライアントからのデータを受信
             header = conn.recv(self.HEADER_BYTE_SIZE)
-            room_name_size, operation, state, operation_payload_size = struct.unpack('!B B B 29s', header)
+            room_name_size, operation, state, operation_payload_size = struct.unpack(
+                "!B B B 29s", header
+            )
             body = conn.recv(4096)
 
             room_name = body[:room_name_size].decode("utf-8")
@@ -89,7 +91,6 @@ class Server:
             server.tcp_socket.close()
             server.udp_socket.close()
             exit()
-        
 
         # operation = 1 ... 部屋作成
         if operation == self.CREATE_ROOM_NUM:
@@ -212,18 +213,19 @@ class Server:
         while True:
             data, sender_address = self.udp_socket.recvfrom(4096)
 
-            room_name_size, token_size = struct.unpack('!B B', data[:2])
-            room_name = data[HEADER_SIZE:HEADER_SIZE + room_name_size].decode('utf-8')
-            token = data[HEADER_SIZE + room_name_size:HEADER_SIZE + room_name_size + token_size].decode('utf-8')
-            message = data[HEADER_SIZE + room_name_size + token_size:]
-
+            room_name_size, token_size = struct.unpack("!B B", data[:2])
+            room_name = data[HEADER_SIZE : HEADER_SIZE + room_name_size].decode("utf-8")
+            token = data[
+                HEADER_SIZE + room_name_size : HEADER_SIZE + room_name_size + token_size
+            ].decode("utf-8")
+            message = data[HEADER_SIZE + room_name_size + token_size :]
 
             # クライアントからのメッセージを処理(並列処理)
             threading.Thread(
                 target=self.handle_message, args=(message, room_name, token)
             ).start()
 
-    def handle_message(self, message,room_name, token):
+    def handle_message(self, message, room_name, token):
         """クライアントからのメッセージを処理する関数
 
         Args:

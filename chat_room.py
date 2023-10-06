@@ -12,7 +12,7 @@ class ChatRoom:
         self.host_token = ""
         self.clients = {}  # クライアント名:クライアントオブジェクトの辞書
         self.tokens_to_addrs = {}  # トークンの辞書:ユーザーIPアドレスの辞書
-        self.messages = []  # チャットメッセージの履歴 
+        self.messages = []  # チャットメッセージの履歴
 
     # トークンをrandomで生成する関数
     def generate_token(self):
