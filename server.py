@@ -59,6 +59,28 @@ class Server:
             conn (socket.socket): 接続されたクライアントのソケットオブジェクト
             client_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
         """
+
+        """チャットルームプロトコル
+        Header(32Bytes): RoomNameSize(1Bytes) | Operation(1Bytes) | State(1Bytes) | OperationPayloadSize(29Bytes)
+        Body: RoomName(Max 2 ^ 8 Bytes == 256Bytes) | OperationPayload(Max 2 ^ 29 Bytes == 536,870,912Bytes == 536 Mbytes)
+        
+
+        State == 0の処理
+        client から server に header をrecvしたら State == 1 にしてすぐに client に send する
+        
+        State == 1の処理
+        server から client に header(State == 1) を recv したら body を send する
+        send し終えたら client は state == 2 を recv するまで 待機
+        server は recv し終えたら body を処理する
+        
+        state == 2の処理
+        body の処理を終えたら
+        server から client に token(Max 255Bytes) を含んだデータ send する その後に tcp_socket.close()
+        client  recv  tcp_socket.close()
+
+        state == 3の処理
+        エラーがある時にserver から client に send する
+        """
         try:
             # クライアントからのデータを受信
             header = conn.recv(self.HEADER_BYTE_SIZE)
