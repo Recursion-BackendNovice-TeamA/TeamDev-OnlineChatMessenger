@@ -227,6 +227,32 @@ class Server:
         for token_key, user_address in self.rooms[room_name].tokens_to_addrs.items():
             if token != token_key:
                 self.udp_socket.sendto(message, tuple(user_address))
+    
+    def recvall_TCRP(self, header , conn):
+        """TCRPのデータを受取をする関数
+
+        Args:
+            header (32Bytes): クライアントから送信されたヘッダー
+            conn (socket.socket): 接続されたクライアントのソケットオブジェクト
+        """
+        room_name_size, operation, state, payload_size = struct.unpack{
+            "!B B B 29s", header
+        }
+        MSGLEN = {
+            int.from_bytes(room_name_size)
+            + len(operation)
+            + len(state)
+            + int.from_bytes(payload_size)
+        }
+        chunks = []
+        bytes_recd = 0
+        while bytes_recd < MSGLEN:
+            chunk = conn.recv(min(MSGLEN - bytes_recd, 4096))
+            if chunk == b"":
+                raise RuntimeError("socket connection broken")
+            chunks.append(chunk)
+            bytes_recd = bytes_recd + len(chunk)
+        return b"".join(chunks)
 
 
 if __name__ == "__main__":
