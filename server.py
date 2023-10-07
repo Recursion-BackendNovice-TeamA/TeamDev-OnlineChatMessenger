@@ -260,9 +260,9 @@ class Server:
             header (32Bytes): クライアントから送信されたヘッダー
             conn (socket.socket): 接続されたクライアントのソケットオブジェクト
         """
-        room_name_size, operation, state, payload_size = struct.unpack{
+        room_name_size, operation, state, payload_size = struct.unpack_from(
             "!B B B 29s", header
-        }
+        )
         MSGLEN = {
             int.from_bytes(room_name_size)
             + len(operation)
