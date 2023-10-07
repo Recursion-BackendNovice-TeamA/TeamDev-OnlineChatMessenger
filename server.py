@@ -114,7 +114,7 @@ class Server:
             # client.token = token
 
             # 部屋にユーザーを追加
-            new_room.add_client(token, user_address)
+            new_room.add_client(token, user_address, user_name)
 
             # クライアントをホストに設定
             # client.is_host = True
@@ -148,7 +148,7 @@ class Server:
             token = self.__generate_token()
             # client.token = token
             # 部屋にユーザーを追加
-            room.add_client(token, user_address)
+            room.add_client(token, user_address, user_name)
             print(f"{user_name}が{room_name}に参加しました。")
 
             # クライアントに新しいヘッダーを送信(state = 2)
@@ -224,8 +224,20 @@ class Server:
             token (str): トークン
         """
         # 受け取ったメッセージを部屋内の全クライアントに中継
-        for token_key, user_address in self.rooms[room_name].tokens_to_addrs.items():
+        chat_room = self.rooms[room_name]
+        deleted_user_name = chat_room.token_to_user_name[token]
+        if message.decode("utf-8") == "CLOSE_CONNECTION":
+            del chat_room.tokens_to_addrs[token]
+            del chat_room.token_to_user_name[token]
+        for token_key, user_address in chat_room.tokens_to_addrs.items():
             if token != token_key:
+                if message.decode("utf-8") == "CLOSE_CONNECTION":
+                    print("closeしました")
+                    self.udp_socket.sendto(
+                        f"{deleted_user_name}が退出しました。".encode("utf-8"),
+                        tuple(user_address),
+                    )
+                    continue
                 self.udp_socket.sendto(message, tuple(user_address))
 
 

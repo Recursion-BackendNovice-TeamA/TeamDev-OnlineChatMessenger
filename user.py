@@ -1,5 +1,6 @@
 import socket
 import struct
+import threading
 
 
 class User:
@@ -22,6 +23,7 @@ class User:
         self.room_name = ""
         self.is_host = False
         self.address = self.__udp_socket.getsockname()
+        self.__timer = None
 
     def input_action_number(self):
         """アクション番号の入力
@@ -38,6 +40,7 @@ class User:
         operation = input(
             "1. Create a new room\n2. Join an existing room\n3. Quit\nChoose an option: "
         )
+        self.user_action()
         return operation
 
     def input_room_name(self):
@@ -49,6 +52,7 @@ class User:
         while True:
             ROOM_NAME_MAX_BYTE_SIZE = 255
             self.room_name = input("Enter room name: ")
+            self.user_action()
             if self.room_name == "":
                 continue
             room_name_size = len(self.room_name.encode("utf-8"))
@@ -77,6 +81,7 @@ class User:
             )
 
             input_message = input("")
+            self.user_action()
 
             if input_message == "exit":
                 print("Closing connection...")
@@ -100,3 +105,38 @@ class User:
             data, _ = self.__udp_socket.recvfrom(4096)
             decoded_data = data.decode("utf-8")
             print(f"{decoded_data}")
+
+    def user_action(self):
+        """ユーザーが何らかのアクションを行った時に呼ばれるメソッド"""
+        self.reset_timer()
+
+    def reset_timer(self):
+        """タイムアウトのカウントをリセットする"""
+        self.start_timer()
+
+    def start_timer(self):
+        """タイマーを開始または再開する"""
+        if self.__timer:
+            self.__timer.cancel()  # 既存のタイマーがあればキャンセル
+        self.__timer = threading.Timer(20, self.timeout)
+        self.__timer.start()
+
+    def timeout(self):
+        """指定した時間が経過したときに実行されるメソッド"""
+        print("Timed out!")
+        header = struct.pack(
+            "!B B",
+            len(self.room_name.encode("utf-8")),
+            len(self.token.encode("utf-8")),
+        )
+
+        body = self.room_name + self.token + f"CLOSE_CONNECTION"
+        encoded_body = body.encode("utf-8")
+
+        message = header + encoded_body
+
+        # メッセージを送信
+        # Todo メッセージのバイトサイズを超えた際の例外処理
+        self.__udp_socket.sendto(message, self.__udp_server_address)
+        self.__udp_socket.close()
+        exit()

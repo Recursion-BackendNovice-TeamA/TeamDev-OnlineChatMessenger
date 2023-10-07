@@ -10,6 +10,7 @@ class ChatRoom:
         self.host_token = ""
         self.clients = {}  # クライアント名:クライアントオブジェクトの辞書
         self.tokens_to_addrs = {}  # トークンの辞書:ユーザーIPアドレスの辞書
+        self.token_to_user_name = {}  # トークン:ユーザー名
         self.messages = []  # チャットメッセージの履歴
 
     # トークンをrandomで生成する関数
@@ -17,9 +18,10 @@ class ChatRoom:
         token = secrets.token_hex(16)
         return token
 
-    def add_client(self, token, user_address):
+    def add_client(self, token, user_address, user_name):
         if len(self.tokens_to_addrs) < self.max_clients:
             self.tokens_to_addrs[token] = user_address
+            self.token_to_user_name[token] = user_name
             # self.clients[client.name] = client
             return True
         else:
