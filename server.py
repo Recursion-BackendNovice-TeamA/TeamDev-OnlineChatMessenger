@@ -6,13 +6,12 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from chat_room import ChatRoom
-from user import User
 
 
 class Server:
     def __init__(self):
-        self.tcp_address = ("0.0.0.0", 9002)
-        self.udp_address = ("0.0.0.0", 9003)
+        self.tcp_address = ("127.0.0.1", 9002)
+        self.udp_address = ("127.0.0.1", 9003)
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.tcp_socket.bind(self.tcp_address)
@@ -41,11 +40,6 @@ class Server:
                     executor.submit(self.wait_for_tcp_conn)
                     executor.submit(self.receive_message)
 
-                # クライアントからのTCP接続を待機(並列処理)
-                # threading.Thread(target=self.wait_for_tcp_conn).start()
-                # クライアントからのUDP接続経由でメッセージを受信(並列処理)
-                # threading.Thread(target=self.receive_message).start()
-
             except KeyboardInterrupt:
                 print("Keyboard Interrupted")
                 self.tcp_socket.close()
@@ -57,25 +51,20 @@ class Server:
         """クライアントからのTCP接続を待機する関数"""
         while True:
             self.tcp_socket.listen(5)
-            conn, client_address = self.tcp_socket.accept()
+            conn, _ = self.tcp_socket.accept()
             # クライアントからのTCP接続を処理(並列処理)
-            threading.Thread(
-                target=self.handle_tcp_conn, args=(conn, client_address)
-            ).start()
+            threading.Thread(target=self.__handle_tcp_conn, args=(conn,)).start()
 
-    def handle_tcp_conn(self, conn, client_address):
+    def __handle_tcp_conn(self, conn):
         """クライアントからのTCP接続を処理する関数
 
         Args:
             conn (socket.socket): 接続されたクライアントのソケットオブジェクト
-            client_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
         """
         try:
             # クライアントからのデータを受信
             header = conn.recv(self.HEADER_BYTE_SIZE)
-            room_name_size, operation, state, operation_payload_size = struct.unpack(
-                "!B B B 29s", header
-            )
+            room_name_size, operation, _, _ = struct.unpack_from("!B B B 29s", header)
             body = conn.recv(4096)
 
             room_name = body[:room_name_size].decode("utf-8")
@@ -169,7 +158,8 @@ class Server:
 
     # トークンをrandomで生成する関数
     def __generate_token(self):
-        token = secrets.token_hex(16)
+        token = secrets.token_hex(32)
+        # token = secrets.token_hex(16)
         return token
 
     # リクエストの状態に応じてヘッダーとペイロードを送信する関数
@@ -211,9 +201,9 @@ class Server:
         HEADER_SIZE = 2
 
         while True:
-            data, sender_address = self.udp_socket.recvfrom(4096)
+            data, _ = self.udp_socket.recvfrom(4096)
 
-            room_name_size, token_size = struct.unpack("!B B", data[:2])
+            room_name_size, token_size = struct.unpack_from("!B B", data[:2])
             room_name = data[HEADER_SIZE : HEADER_SIZE + room_name_size].decode("utf-8")
             token = data[
                 HEADER_SIZE + room_name_size : HEADER_SIZE + room_name_size + token_size
