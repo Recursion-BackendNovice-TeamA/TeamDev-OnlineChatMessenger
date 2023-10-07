@@ -4,17 +4,27 @@ import struct
 
 class User:
     def __init__(self, name):
+        """Userクラスインスタンス化
+
+        Args:
+            name (str): ユーザー名
+
+         Note:
+             UDPソケットをアドレスとポート番号にバインドする際に、ポート番号に0を渡すことで
+             OSが利用可能なランダムなポートを選び、それ利用することができる。
+        """
+        self.__RANDOM_PORT_NUM = 0
+        self.__udp_server_address = ("127.0.0.1", 9003)
+        self.__udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__udp_socket.bind(("127.0.0.1", self.__RANDOM_PORT_NUM))
         self.name = name
         self.token = ""
-        self.is_host = False
-        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_address = ("0.0.0.0", 9003)
-        self.udp_socket.bind(("0.0.0.0", 0))
-        self.address = self.udp_socket.getsockname()
         self.room_name = ""
+        self.is_host = False
+        self.address = self.__udp_socket.getsockname()
 
     def input_action_number(self):
-        """ユーザー入力後にアクションを選ばせる(部屋作成・参加・終了)
+        """アクション番号の入力
 
         Note:
             1: 新しく部屋を作成
@@ -31,7 +41,7 @@ class User:
         return operation
 
     def input_room_name(self):
-        """クライアントが部屋名を入力
+        """部屋名の入力
 
         Returns:
             (str): 部屋名
@@ -41,9 +51,9 @@ class User:
             self.room_name = input("Enter room name: ")
             if self.room_name == "":
                 continue
-            self.room_name_size = len(self.room_name.encode("utf-8"))
-            if self.room_name_size > ROOM_NAME_MAX_BYTE_SIZE:
-                print(f"Room name bytes: {self.room_name_size} is too large.")
+            room_name_size = len(self.room_name.encode("utf-8"))
+            if room_name_size > ROOM_NAME_MAX_BYTE_SIZE:
+                print(f"Room name bytes: {room_name_size} is too large.")
                 print(
                     f"Please retype the room name with less than {ROOM_NAME_MAX_BYTE_SIZE} bytes"
                 )
@@ -61,14 +71,16 @@ class User:
         # メッセージを入力させる
         while True:
             header = struct.pack(
-                "!B B", self.room_name_size, len(self.token.encode("utf-8"))
+                "!B B",
+                len(self.room_name.encode("utf-8")),
+                len(self.token.encode("utf-8")),
             )
 
             input_message = input("")
 
             if input_message == "exit":
                 print("Closing connection...")
-                self.udp_socket.close()
+                self.__udp_socket.close()
                 print("Connection closed.")
                 exit()
 
@@ -79,12 +91,12 @@ class User:
 
             # メッセージを送信
             # Todo メッセージのバイトサイズを超えた際の例外処理
-            self.udp_socket.sendto(message, self.udp_address)
+            self.__udp_socket.sendto(message, self.__udp_server_address)
 
-    # メッセージを受信する関数
     def receive_message(self):
+        """メッセージの受信"""
         while True:
             # メッセージを受信
-            data, _ = self.udp_socket.recvfrom(4096)
+            data, _ = self.__udp_socket.recvfrom(4096)
             decoded_data = data.decode("utf-8")
             print(f"{decoded_data}")
