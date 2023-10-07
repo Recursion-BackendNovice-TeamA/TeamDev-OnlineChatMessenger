@@ -1,12 +1,12 @@
 import socket
 
 
-class ChatClient:
+class User:
     def __init__(
         self, 
         name="",
         address=None,
-        token="",
+        token= "",
         is_host=False,
     ):
         self.name = name

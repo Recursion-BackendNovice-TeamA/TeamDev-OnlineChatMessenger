@@ -11,19 +11,18 @@ class ChatRoom:
         self.max_clients = 1000
         self.host_token = ""
         self.clients = {}  # クライアント名:クライアントオブジェクトの辞書
-        self.tokens_to_addrs = {}  # トークンの辞書:IPアドレスの辞書
+        self.tokens_to_addrs = {}  # トークンの辞書:ユーザーIPアドレスの辞書
         self.messages = []  # チャットメッセージの履歴
 
     # トークンをrandomで生成する関数
     def generate_token(self):
         token = secrets.token_hex(16)
-        self.host_token = token
         return token
 
-    def add_client(self, token, client):
+    def add_client(self, token, user_address):
         if len(self.tokens_to_addrs) < self.max_clients:
-            self.tokens_to_addrs[token] = client.address
-            self.clients[client.name] = client
+            self.tokens_to_addrs[token] = user_address
+            # self.clients[client.name] = client
             return True
         else:
             print("部屋 {} は満員です。".format(self.name))
