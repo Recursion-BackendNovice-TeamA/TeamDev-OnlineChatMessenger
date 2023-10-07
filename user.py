@@ -1,9 +1,12 @@
 import socket
 import struct
 import threading
+import time
 
 
 class User:
+    TIMEOUT = 30
+
     def __init__(self, name):
         """Userクラスインスタンス化
 
@@ -24,6 +27,7 @@ class User:
         self.is_host = False
         self.address = self.__udp_socket.getsockname()
         self.__timer = None
+        self.last_active = time.time()
 
     def input_action_number(self):
         """アクション番号の入力
@@ -83,12 +87,6 @@ class User:
             input_message = input("")
             self.user_action()
 
-            if input_message == "exit":
-                print("Closing connection...")
-                self.__udp_socket.close()
-                print("Connection closed.")
-                exit()
-
             body = self.room_name + self.token + input_message
             encoded_body = body.encode("utf-8")
 
@@ -105,6 +103,10 @@ class User:
             data, _ = self.__udp_socket.recvfrom(4096)
             decoded_data = data.decode("utf-8")
             print(f"{decoded_data}")
+
+            if decoded_data == "{}から退出しました。".format(self.room_name):
+                print(decoded_data)
+                exit()
 
     def user_action(self):
         """ユーザーが何らかのアクションを行った時に呼ばれるメソッド"""
