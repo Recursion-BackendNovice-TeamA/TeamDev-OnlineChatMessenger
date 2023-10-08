@@ -6,17 +6,14 @@ import threading
 from user import User
 
 
-# ChatClientクラスを定義
 class Client:
     def __init__(self):
         self.__tcp_address = ("127.0.0.1", 9002)
         self.__tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
         # クライアントが入力したアクション番号
         self.__CREATE_ROOM_NUM = 1
         self.__JOIN_ROOM_NUM = 2
-        self.__QUIT_NUM = 3
-
+        # state
         self.__SERVER_INIT = 0
         self.__RESPONSE_OF_REQUEST = 1
         self.__REQUEST_COMPLETION = 2
@@ -44,7 +41,7 @@ class Client:
             # 入室リクエストを送信
             self.__request_to_join_room(operation, user, room_name)
             # 入室リクエストのレスポンスを受け取る
-            token = self.__receive_response_to_join_room(user)
+            token = self.__receive_response_to_join_room()
 
             if token is not None:
                 user.token = token
@@ -55,6 +52,8 @@ class Client:
         # TCP接続を閉じる
         self.__tcp_socket.close()
 
+        # 部屋に参加してからタイマースタート
+        user.start_timer()
         # 他クライアントからのメッセージを別スレッドで受信
         threading.Thread(target=user.receive_message).start()
         # メッセージを送信
@@ -127,7 +126,7 @@ class Client:
         req = header + body
         self.__tcp_socket.sendall(req)
 
-    def __receive_response_to_join_room(self, user):
+    def __receive_response_to_join_room(self):
         """部屋入室リクエストのレスポンスを受け取る
 
         Returns:
