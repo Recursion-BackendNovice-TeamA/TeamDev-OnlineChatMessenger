@@ -65,7 +65,8 @@ class Server:
             # クライアントからのデータを受信
             header = conn.recv(self.HEADER_BYTE_SIZE)
             room_name_size, operation, _, _ = struct.unpack_from("!B B B 29s", header)
-            body = conn.recv(4096)
+            # body = conn.recv(4096)
+            body = self.recvall_TCRP(header, conn)
 
             room_name = body[:room_name_size].decode("utf-8")
             payload_data = body[room_name_size:].decode("utf-8")
@@ -88,6 +89,8 @@ class Server:
         # operation = 2 ... 部屋参加
         if operation == self.JOIN_ROOM_NUM:
             self.assign_room(room_name, conn, user_address, user_name)
+        # 一連の処理が終わったのでTCP接続の終了
+        conn.close()
 
     def create_room(self, room_name, conn, user_address, user_name):
         """部屋を作成する関数
@@ -98,8 +101,10 @@ class Server:
             user_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
             user_name (str): ユーザー名
         """
-        # クライアントに新しいヘッダーを送信(state = 1)
-        # self.send_state_res(conn, room_name, self.CREATE_ROOM_NUM, self.RESPONSE_OF_REQUEST, "")
+        # クライアントに新しいヘッダーを送信(state = 1) client.py #140に追記したためうけとれるようになりました。
+        self.send_state_res(
+            conn, room_name, self.CREATE_ROOM_NUM, self.RESPONSE_OF_REQUEST, ""
+        )
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
             # 部屋を作成
@@ -254,31 +259,33 @@ class Server:
                         continue
                     self.udp_socket.sendto(message, tuple(user_address))
 
-    # def recvall_TCRP(self, header , conn):
-    #     """TCRPのデータを受取をする関数
 
-    #     Args:
-    #         header (32Bytes): クライアントから送信されたヘッダー
-    #         conn (socket.socket): 接続されたクライアントのソケットオブジェクト
-    #     """
-    #     room_name_size, operation, state, payload_size = struct.unpack_from(
-    #         "!B B B 29s", header
-    #     )
-    #     MSGLEN = {
-    #         int.from_bytes(room_name_size)
-    #         + len(operation)
-    #         + len(state)
-    #         + int.from_bytes(payload_size)
-    #     }
-    #     chunks = []
-    #     bytes_recd = 0
-    #     while bytes_recd < MSGLEN:
-    #         chunk = conn.recv(min(MSGLEN - bytes_recd, 4096))
-    #         if chunk == b"":
-    #             raise RuntimeError("socket connection broken")
-    #         chunks.append(chunk)
-    #         bytes_recd = bytes_recd + len(chunk)
-    #     return b"".join(chunks)
+    def recvall_TCRP(self, header, conn):
+        """TCRPのデータを受取をする関数
+
+        Args:
+            header (32Bytes): クライアントから送信されたヘッダー
+            conn (socket.socket): 接続されたクライアントのソケットオブジェクト
+        """
+        room_name_size, operation, state, payload_size = struct.unpack_from(
+            "!B B B 29s", header
+        )
+        MSGLEN = {
+            int.from_bytes(room_name_size)
+            + len(operation)
+            + len(state)
+            + int.from_bytes(payload_size)
+        }
+        chunks = []
+        bytes_recd = 0
+        while bytes_recd < MSGLEN:
+            chunk = conn.recv(min(MSGLEN - bytes_recd, 4096))
+            if chunk == b"":
+                raise RuntimeError("socket connection broken")
+            chunks.append(chunk)
+            bytes_recd = bytes_recd + len(chunk)
+        return b"".join(chunks)
+        
 
 
 if __name__ == "__main__":
