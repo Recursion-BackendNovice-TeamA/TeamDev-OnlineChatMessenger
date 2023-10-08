@@ -5,25 +5,32 @@ CLIから起動できます。
 
 # 使用方法
 1. このリポジトリをクローンしてください。
-2. ターミナルを起動しプロジェクトディレクトリ上に移動後、python3 server.pyでサーバー、別のタブでpython3 client.pyでクライアントを起動します。
-![使用方法1](imgs/%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%952.png)
-3. クライアントでユーザー名を入力します。
-![使用方法2](imgs/%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%953.png)
-![使用方法3](imgs/%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%954.png)
-4. 1と入力後、部屋名を入力することで部屋を作成できます（作成したユーザーが部屋のホストとなります）。
-![使用方法4](imgs/%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%955.png)
-![使用方法5](imgs/%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%956.png)
-5. 別のターミナルタブから別のユーザーを、コマンド2で作成済みの部屋に入室させます。
-![使用方法6](imgs/%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%958.png)
-6. メッセージを入力・送信すると、同じ部屋に入っている他のユーザーの画面から送信メッセージが確認できます。
-![使用方法7](imgs/%E4%BD%BF%E7%94%A8%E6%96%B9%E6%B3%958.png)
+2. ターミナルを起動しプロジェクトディレクトリ上に移動後、python3 server.pyでサーバー、別のタブでpython3 client.pyでクライアント
+を起動します。
+
+![使用方法1](https://user-images.githubusercontent.com/81604492/273445101-175ebccb-5f86-4b88-a904-d8c8cfbf5416.png)
+![使用方法2](https://user-images.githubusercontent.com/81604492/273445105-18e4873a-3457-496b-9cc8-ff063afd14f0.png)
+
+
+4. クライアントでユーザー名を入力します。
+ 
+![使用方法3](https://user-images.githubusercontent.com/81604492/273445106-6c2875f0-3876-4d5f-9859-ba2f0214d90f.png)
 
 <br />
-<br />
-<br />
+5. 1と入力後、部屋名を入力することで部屋を作成できます（作成したユーザーが部屋のホストとなります）。
 
-# クラス図/シーケンス図
+![使用方法4](https://user-images.githubusercontent.com/81604492/273445117-fa523b7a-73d9-46d5-92d9-5f3b422d2e96.png)
+![使用方法5](https://user-images.githubusercontent.com/81604492/273445119-c8d7173f-fe74-4c52-9d72-80b49e406f14.png)
 
+<br />
+6. 別のターミナルタブから別のユーザーを、コマンド2で作成済みの部屋に入室させます。
+
+![使用方法6](https://user-images.githubusercontent.com/81604492/273445121-178e1e69-e040-4fbb-b21a-b4c8690c5ca0.png)
+
+<br />
+7. メッセージを入力・送信すると、同じ部屋に入っている他のユーザーの画面から送信メッセージが確認できます。
+
+![使用方法7](https://user-images.githubusercontent.com/81604492/273445125-3f8f88f0-4e1a-48a2-b95f-ea3415239db7.png)
 
 <br />
 <br />
