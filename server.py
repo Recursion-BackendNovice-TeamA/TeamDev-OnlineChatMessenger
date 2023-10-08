@@ -59,6 +59,9 @@ class Server:
                     "!B B B 29s", header
                 )
                 body = self.recvall_TCRP(header, conn)
+                self.__send_state_res(
+                    conn, room_name, operation, self.RESPONSE_OF_REQUEST, ""
+                )
 
                 room_name = body[:room_name_size].decode("utf-8")
                 payload_data = body[room_name_size:].decode("utf-8")
