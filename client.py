@@ -52,6 +52,8 @@ class Client:
         # TCP接続を閉じる
         self.__tcp_socket.close()
 
+        # 部屋に参加してからタイマースタート
+        user.start_timer()
         # 他クライアントからのメッセージを別スレッドで受信
         threading.Thread(target=user.receive_message).start()
         # メッセージを送信

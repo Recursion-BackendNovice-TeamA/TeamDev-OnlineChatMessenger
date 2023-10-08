@@ -26,8 +26,11 @@ class User:
         self.is_host = False
         self.address = self.__udp_socket.getsockname()
         self.__timer = None
-        # タイムアウトタイマースタート
-        self.__start_timer()
+
+        # クライアントが入力したアクション番号
+        self.__CREATE_ROOM_NUM = 1
+        self.__JOIN_ROOM_NUM = 2
+        self.__QUIT = 3
 
     def __input_text(self, input_description):
         """テキスト入力
@@ -40,7 +43,6 @@ class User:
         """
         while True:
             text = input(input_description)
-            self.__reset_timer()
             # Enterなどの入力文字がない場合は再度入力させる
             if text == "":
                 continue
@@ -57,10 +59,19 @@ class User:
         Returns:
             (str): 入力番号(1、2、3のいずれか)
         """
-        print("Please enter 1, 2 or 3")
-        input_description = "1. Create a new room\n2. Join an existing room\n3. Quit\nChoose an option: "
-        operation = self.__input_text(input_description)
-        return operation
+        while True:
+            try:
+                print("Please enter 1, 2 or 3")
+                input_description = "1. Create a new room\n2. Join an existing room\n3. Quit\nChoose an option: "
+                operation = self.__input_text(input_description)
+                if int(operation) in [
+                    self.__CREATE_ROOM_NUM,
+                    self.__JOIN_ROOM_NUM,
+                    self.__QUIT,
+                ]:
+                    return operation
+            except Exception:
+                continue
 
     def input_room_name(self):
         """部屋名の入力
@@ -106,6 +117,7 @@ class User:
         while True:
             # メッセージの入力
             input_message = self.__input_text("")
+            self.__reset_timer()
             request_info = self.__generate_request(input_message)
             # メッセージを送信
             # Todo メッセージのバイトサイズを超えた際の例外処理
@@ -132,9 +144,9 @@ class User:
 
     def __reset_timer(self):
         """タイムアウトのカウントをリセットする"""
-        self.__start_timer()
+        self.start_timer()
 
-    def __start_timer(self):
+    def start_timer(self):
         """タイマーを開始または再開する"""
         if self.__timer:
             # 既存のタイマーがあればキャンセル
