@@ -237,47 +237,48 @@ class Server:
                 room.remove_client(token, self.udp_socket)
 
         # 受け取ったメッセージを部屋内の全クライアントに中継
-        chat_room = self.rooms[room_name]
-        deleted_user_name = chat_room.token_to_user_name[token]
-        if message.decode("utf-8") == "CLOSE_CONNECTION":
-            del chat_room.tokens_to_addrs[token]
-            del chat_room.token_to_user_name[token]
-        for token_key, user_address in chat_room.tokens_to_addrs.items():
-            if token != token_key:
-                if message.decode("utf-8") == "CLOSE_CONNECTION":
-                    print("closeしました")
-                    self.udp_socket.sendto(
-                        f"{deleted_user_name}が退出しました。".encode("utf-8"),
-                        tuple(user_address),
-                    )
-                    continue
-                self.udp_socket.sendto(message, tuple(user_address))
-    
-    def recvall_TCRP(self, header , conn):
-        """TCRPのデータを受取をする関数
+        if room_name in self.rooms:
+            chat_room = self.rooms[room_name]
+            deleted_user_name = chat_room.token_to_user_name[token]
+            if message.decode("utf-8") == "CLOSE_CONNECTION":
+                del chat_room.tokens_to_addrs[token]
+                del chat_room.token_to_user_name[token]
+            for token_key, user_address in chat_room.tokens_to_addrs.items():
+                if token != token_key:
+                    if message.decode("utf-8") == "CLOSE_CONNECTION":
+                        print("closeしました")
+                        self.udp_socket.sendto(
+                            f"{deleted_user_name}が退出しました。".encode("utf-8"),
+                            tuple(user_address),
+                        )
+                        continue
+                    self.udp_socket.sendto(message, tuple(user_address))
 
-        Args:
-            header (32Bytes): クライアントから送信されたヘッダー
-            conn (socket.socket): 接続されたクライアントのソケットオブジェクト
-        """
-        room_name_size, operation, state, payload_size = struct.unpack_from(
-            "!B B B 29s", header
-        )
-        MSGLEN = {
-            int.from_bytes(room_name_size)
-            + len(operation)
-            + len(state)
-            + int.from_bytes(payload_size)
-        }
-        chunks = []
-        bytes_recd = 0
-        while bytes_recd < MSGLEN:
-            chunk = conn.recv(min(MSGLEN - bytes_recd, 4096))
-            if chunk == b"":
-                raise RuntimeError("socket connection broken")
-            chunks.append(chunk)
-            bytes_recd = bytes_recd + len(chunk)
-        return b"".join(chunks)
+    # def recvall_TCRP(self, header , conn):
+    #     """TCRPのデータを受取をする関数
+
+    #     Args:
+    #         header (32Bytes): クライアントから送信されたヘッダー
+    #         conn (socket.socket): 接続されたクライアントのソケットオブジェクト
+    #     """
+    #     room_name_size, operation, state, payload_size = struct.unpack_from(
+    #         "!B B B 29s", header
+    #     )
+    #     MSGLEN = {
+    #         int.from_bytes(room_name_size)
+    #         + len(operation)
+    #         + len(state)
+    #         + int.from_bytes(payload_size)
+    #     }
+    #     chunks = []
+    #     bytes_recd = 0
+    #     while bytes_recd < MSGLEN:
+    #         chunk = conn.recv(min(MSGLEN - bytes_recd, 4096))
+    #         if chunk == b"":
+    #             raise RuntimeError("socket connection broken")
+    #         chunks.append(chunk)
+    #         bytes_recd = bytes_recd + len(chunk)
+    #     return b"".join(chunks)
 
 
 if __name__ == "__main__":

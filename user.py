@@ -126,13 +126,18 @@ class User:
     def timeout(self):
         """指定した時間が経過したときに実行されるメソッド"""
         print("Timed out!")
+        token_size = 0 if self.token is None else len(self.token.encode("utf-8"))
         header = struct.pack(
             "!B B",
             len(self.room_name.encode("utf-8")),
-            len(self.token.encode("utf-8")),
+            token_size,
         )
 
-        body = self.room_name + self.token + f"CLOSE_CONNECTION"
+        body = (
+            self.room_name + self.token + f"CLOSE_CONNECTION"
+            if self.token is not None
+            else self.room_name + f"CLOSE_CONNECTION"
+        )
         encoded_body = body.encode("utf-8")
 
         message = header + encoded_body
