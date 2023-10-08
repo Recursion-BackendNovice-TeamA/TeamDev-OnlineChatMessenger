@@ -4,7 +4,7 @@ import threading
 
 
 class User:
-    TIMEOUT = 10
+    TIMEOUT = 300
 
     def __init__(self, name):
         """Userクラスインスタンス化

@@ -73,7 +73,6 @@ class Server:
                 self.__send_state_res(
                     conn, room_name, operation, self.ERROR_RESPONSE, ""
                 )
-                break
 
             try:
                 token = self.__create_or_join_room(
