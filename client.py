@@ -133,15 +133,19 @@ class Client:
             (str): トークン
         """
         header = self.__tcp_socket.recv(32)
-        _, _, state, payload_size = struct.unpack_from("!B B B 29s", header)
-        operation_payload_size = int.from_bytes(payload_size, byteorder="big")
-        payload = self.__tcp_socket.recv(operation_payload_size)
+        _, _, state, _ = struct.unpack_from("!B B B 29s", header)
+        # operation_payload_size = int.from_bytes(payload_size, byteorder="big")
+        # recv()するデータ全てがpayloadなのでpayload_size不要
+        payload = self.recvall_TCRP(header)
 
         if state == self.__SERVER_INIT:
             print(json.loads(payload.decode("utf-8"))["message"])
             self.__tcp_socket.close()
-            self.__init__()
-            return None
+            self.start()
+        elif state == self.__RESPONSE_OF_REQUEST:
+            # リクエストの受理をするため
+            print(json.loads(payload.decode("utf-8"))["message"])
+            return self.__receive_response_to_join_room()
         elif state == self.__REQUEST_COMPLETION:
             # トークンを取得
             token = json.loads(payload.decode("utf-8"))["token"]
@@ -149,30 +153,31 @@ class Client:
             print(message)
             return token
 
-    # def recvall_TCRP(self, header):
-    #     """TCRPのデータを受取をする関数
+    def recvall_TCRP(self, header):
+        """TCRPのデータを受取をする関数
 
-    #     Args:
-    #         header (32Bytes): クライアントから送信されたヘッダー
-    #     """
-    #     room_name_size, operation, state, payload_size = struct.unpack{
-    #         "!B B B 29s", header
-    #     }
-    #     MSGLEN = {
-    #         int.from_bytes(room_name_size)
-    #         + len(operation)
-    #         + len(state)
-    #         + int.from_bytes(payload_size)
-    #     }
-    #     chunks = []
-    #     bytes_recd = 0
-    #     while bytes_recd < MSGLEN:
-    #         chunk = self.__tcp_socket.recv(min(MSGLEN - bytes_recd, 4096))
-    #         if chunk == b"":
-    #             raise RuntimeError("socket connection broken")
-    #         chunks.append(chunk)
-    #         bytes_recd = bytes_recd + len(chunk)
-    #     return b"".join(chunks)
+        Args:
+            header (32Bytes): クライアントから送信されたヘッダー
+        """
+        room_name_size, operation, state, payload_size = struct.unpack_from(
+            "!B B B 29s", header
+        )
+        MSGLEN = {
+            int.from_bytes(room_name_size)
+            + len(operation)
+            + len(state)
+            + int.from_bytes(payload_size)
+        }
+        chunks = []
+        bytes_recd = 0
+        while bytes_recd < MSGLEN:
+            chunk = self.__tcp_socket.recv(min(MSGLEN - bytes_recd, 4096))
+            if chunk == b"":
+                raise RuntimeError("socket connection broken")
+            chunks.append(chunk)
+            bytes_recd = bytes_recd + len(chunk)
+        return b"".join(chunks)
+
 
 
 if __name__ == "__main__":
