@@ -129,9 +129,10 @@ class Client:
             (str): トークン
         """
         header = self.__tcp_socket.recv(32)
-        _, _, state, payload_size = struct.unpack_from("!B B B 29s", header)
-        operation_payload_size = int.from_bytes(payload_size, byteorder="big")
-        payload = self.__tcp_socket.recv(operation_payload_size)
+        _, _, state, _ = struct.unpack_from("!B B B 29s", header)
+        # operation_payload_size = int.from_bytes(payload_size, byteorder="big")
+        # recv()するデータ全てがpayloadなのでpayload_size不要
+        payload = self.recvall_TCRP(header)
 
         if state == self.__SERVER_INIT:
             print(json.loads(payload.decode("utf-8"))["message"])
@@ -140,7 +141,7 @@ class Client:
         elif state == self.__RESPONSE_OF_REQUEST:
             # リクエストの受理をするため
             print(json.loads(payload.decode("utf-8"))["message"])
-            return self.__receive_response_to_join_room
+            return self.__receive_response_to_join_room()
         elif state == self.__REQUEST_COMPLETION:
             # トークンを取得
             token = json.loads(payload.decode("utf-8"))["token"]

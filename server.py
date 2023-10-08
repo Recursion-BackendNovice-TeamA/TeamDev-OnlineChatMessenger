@@ -89,6 +89,8 @@ class Server:
         # operation = 2 ... 部屋参加
         if operation == self.JOIN_ROOM_NUM:
             self.assign_room(room_name, conn, user_address, user_name)
+        # 一連の処理が終わったのでTCP接続の終了
+        conn.close()
 
     def create_room(self, room_name, conn, user_address, user_name):
         """部屋を作成する関数
