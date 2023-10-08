@@ -1,11 +1,10 @@
 import socket
 import struct
 import threading
-import time
 
 
 class User:
-    TIMEOUT = 30
+    TIMEOUT = 10
 
     def __init__(self, name):
         """Userクラスインスタンス化
@@ -27,7 +26,25 @@ class User:
         self.is_host = False
         self.address = self.__udp_socket.getsockname()
         self.__timer = None
-        self.last_active = time.time()
+        # タイムアウトタイマースタート
+        self.__start_timer()
+
+    def __input_text(self, input_description):
+        """テキスト入力
+
+        Note:
+            テキストの入力と同時にタイムアウトタイマーをリセットする
+
+        Returns:
+            (str): 入力テキスト
+        """
+        while True:
+            text = input(input_description)
+            self.__reset_timer()
+            # Enterなどの入力文字がない場合は再度入力させる
+            if text == "":
+                continue
+            return text
 
     def input_action_number(self):
         """アクション番号の入力
@@ -41,10 +58,8 @@ class User:
             (str): 入力番号(1、2、3のいずれか)
         """
         print("Please enter 1, 2 or 3")
-        operation = input(
-            "1. Create a new room\n2. Join an existing room\n3. Quit\nChoose an option: "
-        )
-        self.user_action()
+        input_description = "1. Create a new room\n2. Join an existing room\n3. Quit\nChoose an option: "
+        operation = self.__input_text(input_description)
         return operation
 
     def input_room_name(self):
@@ -55,10 +70,8 @@ class User:
         """
         while True:
             ROOM_NAME_MAX_BYTE_SIZE = 255
-            self.room_name = input("Enter room name: ")
-            self.user_action()
-            if self.room_name == "":
-                continue
+            input_description = "Enter room name: "
+            self.room_name = self.__input_text(input_description)
             room_name_size = len(self.room_name.encode("utf-8"))
             if room_name_size > ROOM_NAME_MAX_BYTE_SIZE:
                 print(f"Room name bytes: {room_name_size} is too large.")
@@ -68,33 +81,37 @@ class User:
                 continue
             return self.room_name
 
-    def send_message(self):
-        """メッセージを送信する関数
+    def __generate_request(self, message):
+        """リクエスト情報の生成
 
-        Note:
-            メッセージを送信する際にクライアントが入室している部屋名も一緒に渡して
-            どの部屋の他のクライアントにメッセージを送信するか判断する
+        Args:
+            message (str): メッセージ
+
+        Returns:
+            bytes: リクエスト情報
         """
+        header = struct.pack(
+            "!B B",
+            len(self.room_name.encode("utf-8")),
+            len(self.token.encode("utf-8")),
+        )
+        body = self.room_name + self.token + message
+        encoded_body = body.encode("utf-8")
+        request_info = header + encoded_body
+        return request_info
 
-        # メッセージを入力させる
+    def send_message(self):
+        """メッセージの送信"""
+
         while True:
-            header = struct.pack(
-                "!B B",
-                len(self.room_name.encode("utf-8")),
-                len(self.token.encode("utf-8")),
-            )
+            # メッセージの入力
+            input_message = self.__input_text("")
 
-            input_message = input("")
-            self.user_action()
-
-            body = self.room_name + self.token + input_message
-            encoded_body = body.encode("utf-8")
-
-            message = header + encoded_body
+            request_info = self.__generate_request(input_message)
 
             # メッセージを送信
             # Todo メッセージのバイトサイズを超えた際の例外処理
-            self.__udp_socket.sendto(message, self.__udp_server_address)
+            self.__udp_socket.sendto(request_info, self.__udp_server_address)
 
     def receive_message(self):
         """メッセージの受信"""
@@ -102,43 +119,34 @@ class User:
             # メッセージを受信
             data, _ = self.__udp_socket.recvfrom(4096)
             decoded_data = data.decode("utf-8")
-            print(f"{decoded_data}")
+            print(decoded_data)
 
-            if decoded_data == "{}から退出しました。".format(self.room_name):
-                print(decoded_data)
+            if (
+                "ホストが退出したため、チャットルームを終了します。" in decoded_data
+                or decoded_data == f"{self.name}が{self.room_name}から退出しました。"
+            ):
+                self.__udp_socket.close()
                 exit()
 
-    def user_action(self):
-        """ユーザーが何らかのアクションを行った時に呼ばれるメソッド"""
-        self.reset_timer()
-
-    def reset_timer(self):
+    def __reset_timer(self):
         """タイムアウトのカウントをリセットする"""
-        self.start_timer()
+        self.__start_timer()
 
-    def start_timer(self):
+    def __start_timer(self):
         """タイマーを開始または再開する"""
         if self.__timer:
-            self.__timer.cancel()  # 既存のタイマーがあればキャンセル
-        self.__timer = threading.Timer(20, self.timeout)
+            # 既存のタイマーがあればキャンセル
+            self.__timer.cancel()
+        self.__timer = threading.Timer(User.TIMEOUT, self.__timeout)
         self.__timer.start()
 
-    def timeout(self):
+    def __timeout(self):
         """指定した時間が経過したときに実行されるメソッド"""
         print("Timed out!")
-        header = struct.pack(
-            "!B B",
-            len(self.room_name.encode("utf-8")),
-            len(self.token.encode("utf-8")),
-        )
-
-        body = self.room_name + self.token + f"CLOSE_CONNECTION"
-        encoded_body = body.encode("utf-8")
-
-        message = header + encoded_body
+        request_info = self.__generate_request("exit")
 
         # メッセージを送信
         # Todo メッセージのバイトサイズを超えた際の例外処理
-        self.__udp_socket.sendto(message, self.__udp_server_address)
+        self.__udp_socket.sendto(request_info, self.__udp_server_address)
         self.__udp_socket.close()
         exit()
