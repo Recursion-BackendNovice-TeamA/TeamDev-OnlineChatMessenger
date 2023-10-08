@@ -206,7 +206,7 @@ class Server:
                 message = f"{sender_name}が{room_name}から退出しました。\nホストが退出したため、チャットルーム:{room_name}を終了します。"
                 self.__send_others_in_same_room(room, token, message)
                 room.remove_all_users()
-                del room
+                del self.rooms[room_name]
             else:
                 message = f"{sender_name}が{room_name}から退出しました。"
                 self.__send_others_in_same_room(room, token, message)
