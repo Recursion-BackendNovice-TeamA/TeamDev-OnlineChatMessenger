@@ -137,6 +137,10 @@ class Client:
             print(json.loads(payload.decode("utf-8"))["message"])
             self.__tcp_socket.close()
             self.start()
+        elif state == self.__RESPONSE_OF_REQUEST:
+            # リクエストの受理をするため
+            print(json.loads(payload.decode("utf-8"))["message"])
+            return self.__receive_response_to_join_room
         elif state == self.__REQUEST_COMPLETION:
             # トークンを取得
             token = json.loads(payload.decode("utf-8"))["token"]

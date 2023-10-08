@@ -65,7 +65,8 @@ class Server:
             # クライアントからのデータを受信
             header = conn.recv(self.HEADER_BYTE_SIZE)
             room_name_size, operation, _, _ = struct.unpack_from("!B B B 29s", header)
-            body = conn.recv(4096)
+            # body = conn.recv(4096)
+            body = self.recvall_TCRP(header, conn)
 
             room_name = body[:room_name_size].decode("utf-8")
             payload_data = body[room_name_size:].decode("utf-8")
@@ -98,8 +99,10 @@ class Server:
             user_address (tuple): クライアントのアドレス（IPアドレスとポート番号)
             user_name (str): ユーザー名
         """
-        # クライアントに新しいヘッダーを送信(state = 1)
-        # self.send_state_res(conn, room_name, self.CREATE_ROOM_NUM, self.RESPONSE_OF_REQUEST, "")
+        # クライアントに新しいヘッダーを送信(state = 1) client.py #140に追記したためうけとれるようになりました。
+        self.send_state_res(
+            conn, room_name, self.CREATE_ROOM_NUM, self.RESPONSE_OF_REQUEST, ""
+        )
         # キーとして部屋名が部屋リストに存在しない場合
         if room_name not in self.rooms:
             # 部屋を作成
