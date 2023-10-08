@@ -86,7 +86,6 @@ class Server:
             except Exception as e:
                 print(f"Server Error:{e}")
                 self.__send_state_res(conn, room_name, operation, self.SERVER_INIT, "")
-                break
 
     def __generate_token(self):
         """トークンをrandomで生成する関数
