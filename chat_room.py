@@ -28,23 +28,24 @@ class ChatRoom:
             print("部屋 {} は満員です。".format(self.name))
             return False
 
-    def remove_client(self, token, server_udp_socket, leave_msg):
+    def remove_client(self, token):
         if token in self.tokens_to_addrs:
             user_address = self.tokens_to_addrs[token]
             del self.tokens_to_addrs[token]
-            server_udp_socket.sendto(leave_msg.encode("utf-8"), tuple(user_address))
+            del self.token_to_user_name[token]
+            # server_udp_socket.sendto(leave_msg.encode("utf-8"), tuple(user_address))
             return True
 
-    def remove_all_users(self, server_udp_socket, leave_msg):
+    def remove_all_users(self):
         # tokens_to_addrsのコピーを作成
         # tokens_to_addrsをforループ中に変更すると、forループが正常に動作しないため
         tokens_to_remove = self.tokens_to_addrs.copy()
 
         for token in tokens_to_remove:
-            self.remove_client(token, server_udp_socket, leave_msg)
-        self.users = {}
-        self.tokens_to_addrs = {}
-        self.messages = []
+            if self.remove_client(token):
+                self.users = {}
+                self.tokens_to_addrs = {}
+                self.messages = []
 
     def add_message(self, client, message):
         if client in self.users:

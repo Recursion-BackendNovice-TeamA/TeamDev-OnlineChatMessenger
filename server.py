@@ -223,46 +223,37 @@ class Server:
             room_name (str): 部屋名
             token (str): トークン
         """
+        room = self.rooms[room_name]
         # exitと送信したユーザーは部屋から退出
         if message == b"exit":
-            room = self.rooms[room_name]
-            user_address = room.tokens_to_addrs[token]
-            leave_msg = "{}が{}から退出しました。".format(user_address, room_name)
-            self.handle_message(leave_msg.encode("utf-8"), room_name, token)
-            print(leave_msg)
+            deleted_user_name = room.token_to_user_name[token]
             if token == room.host_token:
-                room.remove_all_users(self.udp_socket, leave_msg)
-                print("ホストが退出したため、チャットルームを終了します。")
+                message = f"{deleted_user_name}が{room_name}から退出しました。\nホストが退出したため、チャットルームを終了します。"
+                self.send_others_in_same_room(room, token, message.encode("utf-8"))
+                room.remove_all_users()
             else:
-                room.remove_client(token, self.udp_socket)
+                message = f"{deleted_user_name}が{room_name}から退出しました。"
+                self.send_others_in_same_room(room, token, message.encode("utf-8"))
+                room.remove_client(token)
+        else:
+            self.send_others_in_same_room(room, token, message)
 
+    def send_others_in_same_room(self, room, token, message):
         # 受け取ったメッセージを部屋内の全クライアントに中継
-        chat_room = self.rooms[room_name]
-        deleted_user_name = chat_room.token_to_user_name[token]
-        if message.decode("utf-8") == "CLOSE_CONNECTION":
-            del chat_room.tokens_to_addrs[token]
-            del chat_room.token_to_user_name[token]
-        for token_key, user_address in chat_room.tokens_to_addrs.items():
+        for token_key, user_address in room.tokens_to_addrs.items():
             if token != token_key:
-                if message.decode("utf-8") == "CLOSE_CONNECTION":
-                    print("closeしました")
-                    self.udp_socket.sendto(
-                        f"{deleted_user_name}が退出しました。".encode("utf-8"),
-                        tuple(user_address),
-                    )
-                    continue
                 self.udp_socket.sendto(message, tuple(user_address))
-    
-    def recvall_TCRP(self, header , conn):
+
+    def recvall_TCRP(self, header, conn):
         """TCRPのデータを受取をする関数
 
         Args:
             header (32Bytes): クライアントから送信されたヘッダー
             conn (socket.socket): 接続されたクライアントのソケットオブジェクト
         """
-        room_name_size, operation, state, payload_size = struct.unpack{
+        room_name_size, operation, state, payload_size = struct.unpack(
             "!B B B 29s", header
-        }
+        )
         MSGLEN = {
             int.from_bytes(room_name_size)
             + len(operation)

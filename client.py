@@ -6,7 +6,6 @@ import threading
 from user import User
 
 
-# ChatClientクラスを定義
 class Client:
     def __init__(self):
         self.__tcp_address = ("127.0.0.1", 9002)
@@ -143,16 +142,16 @@ class Client:
             message = json.loads(payload.decode("utf-8"))["message"]
             print(message)
             return token
-    
+
     def recvall_TCRP(self, header):
         """TCRPのデータを受取をする関数
 
         Args:
             header (32Bytes): クライアントから送信されたヘッダー
         """
-        room_name_size, operation, state, payload_size = struct.unpack{
+        room_name_size, operation, state, payload_size = struct.unpack(
             "!B B B 29s", header
-        }
+        )
         MSGLEN = {
             int.from_bytes(room_name_size)
             + len(operation)
