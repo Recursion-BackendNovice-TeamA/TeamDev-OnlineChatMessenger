@@ -106,12 +106,13 @@ class User:
         while True:
             # メッセージの入力
             input_message = self.__input_text("")
-
             request_info = self.__generate_request(input_message)
-
             # メッセージを送信
             # Todo メッセージのバイトサイズを超えた際の例外処理
             self.__udp_socket.sendto(request_info, self.__udp_server_address)
+            if "exit" == input_message:
+                self.__udp_socket.close()
+                exit()
 
     def receive_message(self):
         """メッセージの受信"""
@@ -120,11 +121,12 @@ class User:
             data, _ = self.__udp_socket.recvfrom(4096)
             decoded_data = data.decode("utf-8")
             print(decoded_data)
-
             if (
-                "ホストが退出したため、チャットルームを終了します。" in decoded_data
+                f"ホストが退出したため、チャットルーム:{self.room_name}を終了します。" in decoded_data
                 or decoded_data == f"{self.name}が{self.room_name}から退出しました。"
             ):
+                print("UDPソケットを閉じる。")
+                self.__cancel_timer()
                 self.__udp_socket.close()
                 exit()
 
@@ -150,3 +152,7 @@ class User:
         self.__udp_socket.sendto(request_info, self.__udp_server_address)
         self.__udp_socket.close()
         exit()
+
+    def __cancel_timer(self):
+        """タイマーを止める"""
+        self.__timer.cancel()

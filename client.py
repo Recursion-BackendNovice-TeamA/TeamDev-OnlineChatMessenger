@@ -10,12 +10,10 @@ class Client:
     def __init__(self):
         self.__tcp_address = ("127.0.0.1", 9002)
         self.__tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
         # クライアントが入力したアクション番号
         self.__CREATE_ROOM_NUM = 1
         self.__JOIN_ROOM_NUM = 2
-        self.__QUIT_NUM = 3
-
+        # state
         self.__SERVER_INIT = 0
         self.__RESPONSE_OF_REQUEST = 1
         self.__REQUEST_COMPLETION = 2
