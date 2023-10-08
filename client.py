@@ -26,26 +26,31 @@ class Client:
         # ユーザー名入力
         user_name = self.__input_user_name()
         user = User(user_name)
-        # ユーザーがアクション(1:部屋作成, 2:部屋参加, 3:終了)を選択
-        operation = user.input_action_number()
-        # TCP接続するかどうか
-        tcp_connected = self.__check_tcp_connection(int(operation))
-        if not tcp_connected:
-            print("Closing connection...")
-            self.__tcp_socket.close()
-            print("Connection closed.")
-            exit()
 
-        # 部屋名を入力
-        room_name = user.input_room_name()
-        # 入室リクエストを送信
-        self.__request_to_join_room(operation, user, room_name)
-        # 入室リクエストのレスポンスを受け取る
-        token = self.__receive_response_to_join_room()
-        # ユーザーにトークンを付与
-        user.token = token
-        # 参加した部屋名をセット
-        user.room_name = room_name
+        user.token = None
+        while user.token is None:
+            operation = user.input_action_number()
+            # TCP接続するかどうか
+            tcp_connected = self.__check_tcp_connection(int(operation))
+            if not tcp_connected:
+                print("Closing connection...")
+                self.__tcp_socket.close()
+                print("Connection closed.")
+                exit()
+
+            # 部屋名を入力
+            room_name = user.input_room_name()
+            # 入室リクエストを送信
+            self.__request_to_join_room(operation, user, room_name)
+            # 入室リクエストのレスポンスを受け取る
+            token = self.__receive_response_to_join_room()
+
+            if token is not None:
+                user.token = token
+                # 参加した部屋名をセット
+                user.room_name = room_name
+                break
+
         # TCP接続を閉じる
         self.__tcp_socket.close()
 
@@ -135,7 +140,8 @@ class Client:
         if state == self.__SERVER_INIT:
             print(json.loads(payload.decode("utf-8"))["message"])
             self.__tcp_socket.close()
-            self.start()
+            self.__init__()
+            return None
         elif state == self.__REQUEST_COMPLETION:
             # トークンを取得
             token = json.loads(payload.decode("utf-8"))["token"]
@@ -143,30 +149,30 @@ class Client:
             print(message)
             return token
 
-    def recvall_TCRP(self, header):
-        """TCRPのデータを受取をする関数
+    # def recvall_TCRP(self, header):
+    #     """TCRPのデータを受取をする関数
 
-        Args:
-            header (32Bytes): クライアントから送信されたヘッダー
-        """
-        room_name_size, operation, state, payload_size = struct.unpack(
-            "!B B B 29s", header
-        )
-        MSGLEN = {
-            int.from_bytes(room_name_size)
-            + len(operation)
-            + len(state)
-            + int.from_bytes(payload_size)
-        }
-        chunks = []
-        bytes_recd = 0
-        while bytes_recd < MSGLEN:
-            chunk = self.__tcp_socket.recv(min(MSGLEN - bytes_recd, 4096))
-            if chunk == b"":
-                raise RuntimeError("socket connection broken")
-            chunks.append(chunk)
-            bytes_recd = bytes_recd + len(chunk)
-        return b"".join(chunks)
+    #     Args:
+    #         header (32Bytes): クライアントから送信されたヘッダー
+    #     """
+    #     room_name_size, operation, state, payload_size = struct.unpack{
+    #         "!B B B 29s", header
+    #     }
+    #     MSGLEN = {
+    #         int.from_bytes(room_name_size)
+    #         + len(operation)
+    #         + len(state)
+    #         + int.from_bytes(payload_size)
+    #     }
+    #     chunks = []
+    #     bytes_recd = 0
+    #     while bytes_recd < MSGLEN:
+    #         chunk = self.__tcp_socket.recv(min(MSGLEN - bytes_recd, 4096))
+    #         if chunk == b"":
+    #             raise RuntimeError("socket connection broken")
+    #         chunks.append(chunk)
+    #         bytes_recd = bytes_recd + len(chunk)
+    #     return b"".join(chunks)
 
 
 if __name__ == "__main__":
