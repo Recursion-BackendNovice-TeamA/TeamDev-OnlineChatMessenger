@@ -5,7 +5,8 @@ CLIから起動できます。
 
 # 使用方法
 1. このリポジトリをクローンしてください。
-2. ターミナルを起動しプロジェクトディレクトリ上に移動後、python3 server.pyでサーバー、別のタブでpython3 client.pyでクライアント
+2. ``` git clone https://github.com/Recursion-BackendNovice-TeamA/TeamDev-OnlineChatMessenger.git ```
+3. ターミナルを起動しプロジェクトディレクトリ上に移動後、python3 server.pyでサーバー、別のタブでpython3 client.pyでクライアント
 を起動します。
 
 ![使用方法1](https://user-images.githubusercontent.com/81604492/273445101-175ebccb-5f86-4b88-a904-d8c8cfbf5416.png)
